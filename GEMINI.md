@@ -15,3 +15,13 @@
 2. Build the car using `VehicleBody3D` and four `VehicleWheel3D` nodes. Implement arcade drift physics in `res://scripts/drift_car.gd` by dynamically lowering rear `wheel_friction_slip` when handbraking (`ui_select`) or counter-steering at speed, while applying an angular torque assist to hold slides smoothly.
 3. Keep shaders in `res://shaders/` (`manga_ink.gdshader` for 3D cel-shading + halftone screentones, and `speed_lines.gdshader` for the `CanvasLayer` UI overlay).
 4. After creating or modifying any scene or script, run the project via MCP, inspect debug logs for errors, and fix any issues automatically.
+
+## Git & Cloudflare Deployment Workflow
+- For every update to `main` (after verification):
+  1. If Godot scenes, scripts, shaders, or project/export settings changed, re-export the `"Manga Drift"` Web preset to `build/game/index.html`, copy the exported build files to `website/game/`, and upload changed `/game/*` files to the remote R2 bucket `manga-drift-game` via `npx.cmd --yes wrangler r2 object put ... --remote`.
+  2. Run the commit & deploy sequence on `main`:
+     - `git add -A`
+     - `git commit -m "<Update reason>"`
+     - `git push`
+     - `npx.cmd --yes wrangler deploy`
+- Windows notes: `git.exe` lives at `C:\Program Files\Git\cmd\git.exe` and Wrangler should be invoked via `npx.cmd` (`npx.ps1` is blocked by execution policy).
