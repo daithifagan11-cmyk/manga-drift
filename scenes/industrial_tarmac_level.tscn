@@ -1,0 +1,59 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/industrial_tarmac_builder.gd" id="1_builder"]
+[ext_resource type="PackedScene" path="res://scenes/drift_car.tscn" id="2_car"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_industrial"]
+sky_top_color = Color(0.08, 0.14, 0.26, 1)
+sky_horizon_color = Color(0.2, 0.3, 0.46, 1)
+ground_bottom_color = Color(0.05, 0.08, 0.13, 1)
+ground_horizon_color = Color(0.1, 0.16, 0.26, 1)
+sun_angle_max = 20.0
+
+[sub_resource type="Sky" id="Sky_industrial"]
+sky_material = SubResource("ProceduralSkyMaterial_industrial")
+
+[sub_resource type="Environment" id="Environment_industrial"]
+background_mode = 2
+sky = SubResource("Sky_industrial")
+ambient_light_source = 3
+ambient_light_color = Color(0.2, 0.26, 0.38, 1)
+ambient_light_energy = 1.15
+ambient_light_sky_contribution = 0.8
+reflected_light_source = 2
+tonemap_mode = 2
+tonemap_exposure = 1.25
+tonemap_white = 5.5
+ssao_enabled = true
+ssao_radius = 2.0
+ssao_intensity = 2.2
+ssao_power = 1.4
+ssr_enabled = true
+ssr_max_steps = 64
+ssr_fade_in = 0.15
+ssr_fade_out = 2.0
+ssr_depth_tolerance = 0.2
+glow_enabled = true
+glow_intensity = 0.75
+glow_bloom = 1.6
+glow_hdr_threshold = 0.85
+fog_enabled = true
+fog_light_color = Color(0.08, 0.12, 0.22, 1)
+fog_density = 0.0014
+
+[node name="IndustrialTarmacLevel" type="Node3D"]
+script = ExtResource("1_builder")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_industrial")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, -0.321394, 0.383022, 0, 0.766044, 0.642788, -0.5, -0.55667, 0.663414, 0, 100, 0)
+light_color = Color(0.76, 0.85, 0.98, 1)
+light_energy = 0.75
+shadow_enabled = true
+shadow_bias = 0.02
+directional_shadow_max_distance = 450.0
+
+[node name="DriftCar" parent="." instance=ExtResource("2_car")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 60)

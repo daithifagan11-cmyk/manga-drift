@@ -1,0 +1,39 @@
+# Godot 4+ specific ignores
+.godot/
+
+# Build and export directories
+build/
+export/
+exports/
+dist/
+
+# Exported binaries and web/desktop artifacts
+*.exe
+*.pck
+*.apk
+*.aab
+*.dmg
+*.zip
+*.tar.gz
+*.wasm
+*.debug.wasm
+*.bak
+/index.*
+
+# Keep export_presets.cfg and website/ tracked
+!export_presets.cfg
+!website/
+!website/**
+
+# Imported translations and mono
+*.translation
+.mono/
+data_*/
+mono_crash.*.json
+
+# System and IDE files
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+*~

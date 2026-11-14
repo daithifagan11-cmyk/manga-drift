@@ -1,0 +1,47 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/speed_lines_overlay.gd" id="1_overlay"]
+[ext_resource type="Shader" path="res://shaders/cinematic_post.gdshader" id="2_post"]
+[ext_resource type="Shader" path="res://shaders/speed_lines.gdshader" id="3_speed"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_post"]
+shader = ExtResource("2_post")
+shader_parameter/chromatic_aberration = 0.0035
+shader_parameter/film_grain_intensity = 0.025
+shader_parameter/vignette_intensity = 0.42
+shader_parameter/vignette_opacity = 0.55
+shader_parameter/rain_streaks_intensity = 0.38
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_speed"]
+shader = ExtResource("3_speed")
+shader_parameter/density = 85.0
+shader_parameter/inner_radius = 0.32
+shader_parameter/intensity = 0.0
+shader_parameter/line_color = Color(1, 1, 1, 0.9)
+shader_parameter/line_length = 0.65
+shader_parameter/outer_radius = 1.05
+shader_parameter/speed = 36.0
+shader_parameter/center_offset = Vector2(0, 0)
+
+[node name="MangaSpeedFX" type="CanvasLayer"]
+layer = 4
+script = ExtResource("1_overlay")
+
+[node name="CinematicPostRect" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_post")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="SpeedLinesRect" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_speed")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 1, 1, 0)

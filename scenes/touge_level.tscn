@@ -1,0 +1,76 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/touge_level_builder.gd" id="1_builder"]
+[ext_resource type="PackedScene" path="res://scenes/drift_car.tscn" id="2_car"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_twilight"]
+sky_top_color = Color(0.07, 0.13, 0.26, 1)
+sky_horizon_color = Color(0.16, 0.28, 0.48, 1)
+ground_bottom_color = Color(0.04, 0.07, 0.12, 1)
+ground_horizon_color = Color(0.08, 0.14, 0.24, 1)
+sun_angle_max = 15.0
+
+[sub_resource type="Sky" id="Sky_twilight"]
+sky_material = SubResource("ProceduralSkyMaterial_twilight")
+
+[sub_resource type="Environment" id="Environment_twilight"]
+background_mode = 2
+sky = SubResource("Sky_twilight")
+ambient_light_source = 3
+ambient_light_color = Color(0.2, 0.26, 0.38, 1)
+ambient_light_energy = 1.15
+ambient_light_sky_contribution = 0.8
+reflected_light_source = 2
+tonemap_mode = 3
+tonemap_exposure = 1.25
+tonemap_white = 5.8
+ssr_enabled = true
+ssr_max_steps = 128
+ssr_fade_in = 0.1
+ssr_fade_out = 2.4
+ssr_depth_tolerance = 0.3
+ssao_enabled = true
+ssao_radius = 2.4
+ssao_intensity = 2.4
+ssao_power = 1.5
+ssao_detail = 1.2
+ssao_horizon = 0.08
+ssao_sharpness = 0.98
+glow_enabled = true
+glow_normalized = true
+glow_intensity = 0.75
+glow_bloom = 1.6
+glow_hdr_threshold = 0.85
+glow_hdr_scale = 2.0
+glow_hdr_luminance_cap = 16.0
+volumetric_fog_enabled = true
+volumetric_fog_density = 0.025
+volumetric_fog_albedo = Color(0.16, 0.22, 0.34, 1)
+volumetric_fog_emission = Color(0.025, 0.035, 0.06, 1)
+volumetric_fog_emission_energy = 0.9
+volumetric_fog_gi_inject = 1.0
+volumetric_fog_anisotropy = 0.35
+volumetric_fog_length = 350.0
+volumetric_fog_ambient_inject = 0.45
+volumetric_fog_sky_affect = 0.25
+adjustment_enabled = true
+adjustment_brightness = 1.08
+adjustment_contrast = 1.12
+adjustment_saturation = 1.25
+
+[node name="TougeLevel" type="Node3D"]
+script = ExtResource("1_builder")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_twilight")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, -0.286788, 0.409576, 0, 0.819152, 0.573576, -0.5, -0.496732, 0.709406, 0, 120, 0)
+light_color = Color(0.76, 0.85, 0.98, 1)
+light_energy = 0.75
+shadow_enabled = true
+shadow_bias = 0.02
+directional_shadow_max_distance = 350.0
+
+[node name="DriftCar" parent="." instance=ExtResource("2_car")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25, 90.65, 0)

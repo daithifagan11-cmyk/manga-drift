@@ -1,0 +1,49 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/main_game.gd" id="1_main"]
+
+[node name="SplitScreenEbisu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_main")
+level_scene_path = "res://scenes/ebisu_level.tscn"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 0
+
+[node name="ViewportContainer1" type="SubViewportContainer" parent="HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+stretch = true
+
+[node name="SubViewport1" type="SubViewport" parent="HBoxContainer/ViewportContainer1"]
+handle_input_locally = false
+size = Vector2i(638, 720)
+render_target_update_mode = 4
+
+[node name="SplitDivider" type="ColorRect" parent="HBoxContainer"]
+custom_minimum_size = Vector2(4, 0)
+layout_mode = 2
+color = Color(0, 0, 0, 1)
+
+[node name="ViewportContainer2" type="SubViewportContainer" parent="HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+stretch = true
+
+[node name="SubViewport2" type="SubViewport" parent="HBoxContainer/ViewportContainer2"]
+handle_input_locally = false
+size = Vector2i(638, 720)
+render_target_update_mode = 4

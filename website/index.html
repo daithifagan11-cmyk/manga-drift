@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daithi Fagan | Game Developer &amp; Creator of MangaDrift</title>
+  <meta name="description" content="Personal portfolio and About Me page for Daithi Fagan — creator of MangaDrift, a 3D arcade touge drift score-attack game built in Godot 4." />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="speed-lines-bg" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="container nav-container">
+      <a href="#top" class="brand">
+        <span class="brand-kanji">峠</span>
+        <span class="brand-text">DAITHI FAGAN</span>
+      </a>
+      <nav class="site-nav" aria-label="Primary Navigation">
+        <a href="#about">About Me</a>
+        <a href="#featured-game">MangaDrift</a>
+        <a href="#skills">Skills</a>
+        <a href="/game/" class="nav-cta">Play Game &rarr;</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="container hero-grid">
+        <div class="hero-content">
+          <p class="eyebrow">GAME DEVELOPER &bull; 3D GRAPHICS &bull; INTERACTIVE MEDIA</p>
+          <h1>Hi, I'm <span class="accent-text">Daithi</span>.<br />I build stylized 3D worlds &amp; arcade racers.</h1>
+          <p class="hero-lead">
+            Welcome to my corner of the web. I'm a passionate developer focused on real-time 3D rendering, custom shaders, expressive vehicle physics, and high-energy arcade gameplay in Godot 4.
+          </p>
+          <div class="hero-actions">
+            <a href="/game/" class="btn btn-primary">
+              <span class="btn-icon">&#9654;</span>
+              <span>Launch MangaDrift</span>
+              <span class="btn-tag">/game/</span>
+            </a>
+            <a href="#about" class="btn btn-secondary">More About Me</a>
+          </div>
+        </div>
+
+        <div class="hero-card" aria-label="Featured Game Preview">
+          <div class="manga-panel">
+            <div class="panel-badge">FEATURED PROJECT</div>
+            <div class="onomatopoeia" aria-hidden="true">ゴゴゴ / GOGOGO!</div>
+            <h2 class="panel-title">MANGA DRIFT</h2>
+            <p class="panel-subtitle">3D Arcade Touge Drift Score-Attack</p>
+            <ul class="panel-highlights">
+              <li>Custom Manga Ink &amp; Halftone Screentone Shaders</li>
+              <li>Counter-Steer &amp; Handbrake Arcade Drift Physics</li>
+              <li>Touge Mountain Pass, Ebisu Circuit &amp; Industrial Tarmac</li>
+              <li>Single-Player Score Attack &amp; Split-Screen Tandem Mode</li>
+            </ul>
+            <a href="/game/" class="btn btn-primary btn-full">Play Now in Browser</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- About Me Section -->
+    <section id="about" class="section about-section">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-kicker">01 // WHO I AM</span>
+          <h2>About Me</h2>
+        </div>
+        <div class="about-grid">
+          <div class="about-card">
+            <h3>Craft &amp; Vision</h3>
+            <p>
+              I love blending stylized artistic direction with responsive, tactile game feel. Whether tuning suspension and tire slip curves on a mountain hairpin or writing custom GLSL shaders for wet asphalt reflections and manga speed lines, I focus on making every frame feel fast and alive.
+            </p>
+          </div>
+          <div class="about-card">
+            <h3>What I'm Building</h3>
+            <p>
+              My flagship project, <strong>MangaDrift</strong>, draws inspiration from classic Japanese touge racing and manga aesthetics—combining inverted-hull ink outlines, dynamic 3D Katakana/Romaji onomatopoeia popups, and combo-based drift scoring right in the browser.
+            </p>
+          </div>
+          <div class="about-card">
+            <h3>Always Experimenting</h3>
+            <p>
+              From procedural track and environment generation to WebAssembly exports and automated CI/CD deployment pipelines, I enjoy taking projects all the way from initial prototype to playable web release.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Featured Game Section -->
+    <section id="featured-game" class="section game-showcase">
+      <div class="container">
+        <div class="showcase-banner">
+          <div class="showcase-info">
+            <span class="section-kicker">02 // PLAYABLE WEB BUILD</span>
+            <h2>Ready to Hit the Touge?</h2>
+            <p>
+              Chain left-to-right drift transitions within 2.5 seconds to push your combo multiplier up to <strong>10x</strong>, clip the neon apex zones, and bank massive scores before the 120-second stage timer runs out.
+            </p>
+            <div class="controls-grid">
+              <div class="control-pill"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / <kbd>Arrows</kbd> Drive &amp; Steer</div>
+              <div class="control-pill"><kbd>Space</kbd> Handbrake Drift</div>
+              <div class="control-pill"><kbd>R</kbd> Reset Car</div>
+              <div class="control-pill"><kbd>Esc</kbd> Main Menu</div>
+            </div>
+          </div>
+          <div class="showcase-cta">
+            <a href="/game/" class="btn btn-primary btn-large">
+              <span class="btn-icon">&#9654;</span>
+              <span>Play MangaDrift (/game/)</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Skills & Tech Stack Section -->
+    <section id="skills" class="section skills-section">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-kicker">03 // TOOLKIT</span>
+          <h2>Tech &amp; Skills</h2>
+        </div>
+        <div class="tag-cloud">
+          <span class="skill-tag">Godot 4.x (Forward+)</span>
+          <span class="skill-tag">GDScript</span>
+          <span class="skill-tag">GLSL / Godot Shaders</span>
+          <span class="skill-tag">3D Vehicle Physics (Jolt)</span>
+          <span class="skill-tag">Procedural 3D Environments</span>
+          <span class="skill-tag">HTML5 / WebAssembly Export</span>
+          <span class="skill-tag">Git &amp; GitHub Actions</span>
+          <span class="skill-tag">Responsive Web Design</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <p>&copy; <span id="year">2026</span> Daithi Fagan. Built with passion &amp; Godot 4.</p>
+      <div class="footer-links">
+        <a href="/game/">Launch Game</a>
+        <a href="https://github.com/daithifagan11-cmyk/manga-drift" target="_blank" rel="noopener noreferrer">GitHub Repository</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,207 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/drift_hud.gd" id="1_hud"]
+[ext_resource type="Shader" path="res://shaders/speed_lines.gdshader" id="2_speed"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_speed"]
+shader = ExtResource("2_speed")
+shader_parameter/density = 75.0
+shader_parameter/inner_radius = 0.36
+shader_parameter/intensity = 0.0
+shader_parameter/line_color = Color(1, 1, 1, 0.85)
+shader_parameter/outer_radius = 1.05
+shader_parameter/speed = 32.0
+shader_parameter/center_offset = Vector2(0, 0)
+
+[node name="DriftHUD" type="CanvasLayer"]
+script = ExtResource("1_hud")
+
+[node name="SpeedLinesRect" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_speed")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 1, 1, 0)
+
+[node name="TopCenterPanel" type="MarginContainer" parent="."]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -140.0
+offset_top = 20.0
+offset_right = 140.0
+offset_bottom = 80.0
+grow_horizontal = 2
+
+[node name="StageTimerLabel" type="Label" parent="TopCenterPanel"]
+layout_mode = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 16
+theme_override_font_sizes/font_size = 48
+text = "02:00"
+horizontal_alignment = 1
+
+[node name="HighScoreLabel" type="Label" parent="."]
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 75.0
+offset_bottom = 110.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(1, 0.84, 0, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 24
+text = "★ ALL-TIME HIGH SCORE: 0 ★"
+horizontal_alignment = 1
+
+[node name="TopRightPanel" type="MarginContainer" parent="."]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -420.0
+offset_top = 22.0
+offset_right = -35.0
+offset_bottom = 80.0
+grow_horizontal = 0
+
+[node name="BankedScoreLabel" type="Label" parent="TopRightPanel"]
+layout_mode = 2
+pivot_offset = Vector2(300, 25)
+theme_override_colors/font_color = Color(1, 0.9, 0.2, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 14
+theme_override_font_sizes/font_size = 32
+text = "TOTAL BANKED: 0"
+horizontal_alignment = 2
+
+[node name="LeftPanel" type="MarginContainer" parent="."]
+offset_left = 32.0
+offset_top = 28.0
+offset_right = 420.0
+offset_bottom = 290.0
+theme_override_constants/margin_left = 32
+
+[node name="VBox" type="VBoxContainer" parent="LeftPanel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="ComboBadge" type="Label" parent="LeftPanel/VBox"]
+layout_mode = 2
+pivot_offset = Vector2(0, 22)
+theme_override_colors/font_color = Color(1, 0.45, 0.15, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 18
+theme_override_font_sizes/font_size = 42
+text = "COMBO x1"
+
+[node name="DriftPointsLabel" type="Label" parent="LeftPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 16
+theme_override_font_sizes/font_size = 46
+text = "0 PTS"
+
+[node name="HighAngleBadge" type="Label" parent="LeftPanel/VBox"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.9, 0.15, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 10
+theme_override_font_sizes/font_size = 18
+text = "★ HIGH ANGLE SLIDE! ★"
+
+[node name="AngleLabel" type="Label" parent="LeftPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 8
+theme_override_font_sizes/font_size = 18
+text = "DRIFT ANGLE: 0°"
+
+[node name="AngleBar" type="ProgressBar" parent="LeftPanel/VBox"]
+custom_minimum_size = Vector2(260, 14)
+layout_mode = 2
+max_value = 70.0
+show_percentage = false
+
+[node name="BankTimerLabel" type="Label" parent="LeftPanel/VBox"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.85, 0.85, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 14
+text = "BANKING COMBO..."
+
+[node name="BankTimerBar" type="ProgressBar" parent="LeftPanel/VBox"]
+visible = false
+custom_minimum_size = Vector2(260, 8)
+layout_mode = 2
+max_value = 100.0
+show_percentage = false
+
+[node name="CenterNotification" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -250.0
+offset_top = -120.0
+offset_right = 250.0
+offset_bottom = -40.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="BannerLabel" type="Label" parent="CenterNotification"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(250, 40)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 20
+theme_override_font_sizes/font_size = 44
+text = "COMBO CANCELLED!"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BottomRightPanel" type="MarginContainer" parent="."]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -340.0
+offset_top = -140.0
+offset_right = -35.0
+offset_bottom = -25.0
+grow_horizontal = 0
+grow_vertical = 0
+
+[node name="VBox" type="VBoxContainer" parent="BottomRightPanel"]
+layout_mode = 2
+
+[node name="SpeedometerLabel" type="Label" parent="BottomRightPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 16
+theme_override_font_sizes/font_size = 52
+text = "0 KM/H"
+horizontal_alignment = 2
+
+[node name="ControlsHint" type="Label" parent="BottomRightPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.8, 0.85, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 14
+text = "W/S: Drive | A/D: Steer | Space: Handbrake | R: Reset"
+horizontal_alignment = 2

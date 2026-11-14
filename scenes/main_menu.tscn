@@ -1,0 +1,1033 @@
+[gd_scene load_steps=22 format=3]
+
+[ext_resource type="Script" path="res://scripts/main_menu.gd" id="1_menu"]
+[ext_resource type="PackedScene" path="res://scenes/drift_car.tscn" id="2_car"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_twilight"]
+sky_top_color = Color(0.07, 0.13, 0.26, 1)
+sky_horizon_color = Color(0.16, 0.28, 0.48, 1)
+ground_bottom_color = Color(0.04, 0.07, 0.12, 1)
+ground_horizon_color = Color(0.08, 0.14, 0.24, 1)
+sun_angle_max = 12.0
+
+[sub_resource type="Sky" id="Sky_twilight"]
+sky_material = SubResource("ProceduralSkyMaterial_twilight")
+
+[sub_resource type="Environment" id="Environment_menu"]
+background_mode = 2
+sky = SubResource("Sky_twilight")
+ambient_light_source = 3
+ambient_light_color = Color(0.2, 0.26, 0.38, 1)
+ambient_light_energy = 1.15
+ambient_light_sky_contribution = 0.8
+reflected_light_source = 2
+tonemap_mode = 2
+tonemap_exposure = 1.25
+glow_enabled = true
+glow_intensity = 0.25
+glow_bloom = 0.02
+glow_hdr_threshold = 3.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_paddock_floor"]
+albedo_color = Color(0.102, 0.11, 0.125, 1)
+roughness = 0.85
+
+[sub_resource type="BoxMesh" id="BoxMesh_floor"]
+material = SubResource("StandardMaterial3D_paddock_floor")
+size = Vector3(80, 0.5, 80)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_parking_lines"]
+albedo_color = Color(0.85, 0.88, 0.92, 1)
+roughness = 0.5
+
+[sub_resource type="BoxMesh" id="BoxMesh_parking_line_long"]
+material = SubResource("StandardMaterial3D_parking_lines")
+size = Vector3(0.15, 0.02, 6.2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_parking_line_short"]
+material = SubResource("StandardMaterial3D_parking_lines")
+size = Vector3(3.2, 0.02, 0.15)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_container_red"]
+albedo_color = Color(0.44, 0.12, 0.14, 1)
+metallic = 0.3
+roughness = 0.45
+
+[sub_resource type="BoxMesh" id="BoxMesh_container_large"]
+material = SubResource("StandardMaterial3D_container_red")
+size = Vector3(3.2, 2.8, 7.5)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_container_teal"]
+albedo_color = Color(0.12, 0.26, 0.32, 1)
+metallic = 0.25
+roughness = 0.5
+
+[sub_resource type="BoxMesh" id="BoxMesh_container_small"]
+material = SubResource("StandardMaterial3D_container_teal")
+size = Vector3(3.2, 2.6, 6.0)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_guardrail"]
+albedo_color = Color(0.24, 0.27, 0.32, 1)
+metallic = 0.65
+roughness = 0.35
+
+[sub_resource type="BoxMesh" id="BoxMesh_guardrail_bar"]
+material = SubResource("StandardMaterial3D_guardrail")
+size = Vector3(25, 0.72, 0.25)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_barrier"]
+albedo_color = Color(0.35, 0.38, 0.42, 1)
+roughness = 0.9
+
+[sub_resource type="BoxMesh" id="BoxMesh_concrete_barrier"]
+material = SubResource("StandardMaterial3D_barrier")
+size = Vector3(4.5, 0.85, 0.6)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_lamp_bulb"]
+albedo_color = Color(1, 0.8, 0.45, 1)
+emission_enabled = true
+emission = Color(1, 0.72, 0.32, 1)
+emission_energy_multiplier = 4.5
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_lamp_pole"]
+top_radius = 0.08
+bottom_radius = 0.12
+height = 6.2
+
+[sub_resource type="BoxMesh" id="BoxMesh_lamp_head"]
+material = SubResource("StandardMaterial3D_lamp_bulb")
+size = Vector3(0.6, 0.2, 1.2)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_normal"]
+bg_color = Color(0.93, 0.94, 0.96, 0.92)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.72, 0.75, 0.8, 0.85)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0, 0, 0.35)
+shadow_size = 8
+shadow_offset = Vector2(0, 4)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_hover"]
+bg_color = Color(0.18, 0.42, 0.62, 0.95)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0.1, 0.3, 0.55, 0.5)
+shadow_size = 12
+shadow_offset = Vector2(0, 4)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_pressed"]
+bg_color = Color(0.14, 0.34, 0.52, 0.98)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.9, 0.95, 1, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_loading_bg"]
+bg_color = Color(0.08, 0.1, 0.14, 0.85)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.25, 0.3, 0.38, 0.9)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_loading_fill"]
+bg_color = Color(0.24, 0.58, 0.86, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[node name="MainMenu" type="Node3D"]
+script = ExtResource("1_menu")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_menu")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, -0.25, 0.433013, 0, 0.866025, 0.5, -0.5, -0.433013, 0.75, 0, 20, 0)
+light_color = Color(0.76, 0.85, 0.98, 1)
+light_energy = 0.75
+shadow_enabled = true
+shadow_bias = 0.02
+
+[node name="PaddockEnvironment" type="Node3D" parent="."]
+
+[node name="PaddockFloor" type="MeshInstance3D" parent="PaddockEnvironment"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.25, 0)
+mesh = SubResource("BoxMesh_floor")
+
+[node name="ParkingLineL" type="MeshInstance3D" parent="PaddockEnvironment"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0.01, -0.2)
+mesh = SubResource("BoxMesh_parking_line_long")
+
+[node name="ParkingLineR" type="MeshInstance3D" parent="PaddockEnvironment"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.7, 0.01, -0.2)
+mesh = SubResource("BoxMesh_parking_line_long")
+
+[node name="ParkingLineFront" type="MeshInstance3D" parent="PaddockEnvironment"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.1, 0.01, -3.3)
+mesh = SubResource("BoxMesh_parking_line_short")
+
+[node name="ContainerRed" type="MeshInstance3D" parent="PaddockEnvironment"]
+transform = Transform3D(0.965926, 0, -0.258819, 0, 1, 0, 0.258819, 0, 0.965926, 6.2, 1.4, -4.8)
+mesh = SubResource("BoxMesh_container_large")
+
+[node name="ContainerTeal" type="MeshInstance3D" parent="PaddockEnvironment"]
+transform = Transform3D(0.996195, 0, 0.0871557, 0, 1, 0, -0.0871557, 0, 0.996195, -7.5, 1.3, -5.5)
+mesh = SubResource("BoxMesh_container_small")
+
+[node name="GuardrailsBack" type="MeshInstance3D" parent="PaddockEnvironment"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.36, -8.5)
+mesh = SubResource("BoxMesh_guardrail_bar")
+
+[node name="ConcreteBarrier1" type="MeshInstance3D" parent="PaddockEnvironment"]
+transform = Transform3D(0.939693, 0, 0.34202, 0, 1, 0, -0.34202, 0, 0.939693, -4.5, 0.42, -2.8)
+mesh = SubResource("BoxMesh_concrete_barrier")
+
+[node name="OverheadStreetlamp" type="Node3D" parent="PaddockEnvironment"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.2, 0, 1.2)
+
+[node name="Pole" type="MeshInstance3D" parent="PaddockEnvironment/OverheadStreetlamp"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.1, 0)
+mesh = SubResource("CylinderMesh_lamp_pole")
+
+[node name="LampHead" type="MeshInstance3D" parent="PaddockEnvironment/OverheadStreetlamp"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 6.2, 0)
+mesh = SubResource("BoxMesh_lamp_head")
+
+[node name="WarmSpotLight" type="OmniLight3D" parent="PaddockEnvironment/OverheadStreetlamp"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 5.8, 0)
+light_color = Color(1, 0.72, 0.32, 1)
+light_energy = 3.2
+omni_range = 14.0
+omni_attenuation = 1.2
+
+[node name="FillLight" type="OmniLight3D" parent="PaddockEnvironment"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 3.2, 2.5)
+light_color = Color(0.45, 0.65, 0.95, 1)
+light_energy = 1.2
+omni_range = 16.0
+omni_attenuation = 1.3
+
+[node name="ShowcaseCar" parent="." instance=ExtResource("2_car")]
+transform = Transform3D(-0.819152, 0, 0.573576, 0, 1, 0, -0.573576, 0, -0.819152, 2.1, 0.02, -0.2)
+
+[node name="CameraRig" type="Node3D" parent="."]
+
+[node name="Camera3D" type="Camera3D" parent="CameraRig"]
+transform = Transform3D(0.978148, 0.0244717, -0.206456, 0, 0.993068, 0.117537, 0.2079, -0.114968, 0.971368, -0.6, 1.25, 4.4)
+current = true
+fov = 50.0
+
+[node name="MenuCanvas" type="CanvasLayer" parent="."]
+
+[node name="LeftVignette" type="ColorRect" parent="MenuCanvas"]
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_right = 540.0
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.04, 0.05, 0.08, 0.55)
+
+[node name="GameTitle" type="VBoxContainer" parent="MenuCanvas"]
+offset_left = 70.0
+offset_top = 65.0
+offset_right = 430.0
+offset_bottom = 145.0
+mouse_filter = 2
+theme_override_constants/separation = 2
+
+[node name="MainTitle" type="Label" parent="MenuCanvas/GameTitle"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.97, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.75)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_font_sizes/font_size = 38
+text = "MANGA DRIFT"
+
+[node name="SubTitle" type="Label" parent="MenuCanvas/GameTitle"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.28, 0.75, 0.92, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.6)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 13
+text = "TOUGE ATTACK // 峠ドリフト"
+
+[node name="MenuContainer" type="MarginContainer" parent="MenuCanvas"]
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 70.0
+offset_top = -186.0
+offset_right = 430.0
+offset_bottom = 186.0
+grow_vertical = 2
+
+[node name="ButtonList" type="VBoxContainer" parent="MenuCanvas/MenuContainer"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="PlayButton" type="Button" parent="MenuCanvas/MenuContainer/ButtonList"]
+custom_minimum_size = Vector2(360, 115)
+layout_mode = 2
+focus_neighbor_top = NodePath("../QuitButton")
+focus_neighbor_bottom = NodePath("../MapsButton")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+
+[node name="Margin" type="MarginContainer" parent="MenuCanvas/MenuContainer/ButtonList/PlayButton"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 16
+
+[node name="HBox" type="HBoxContainer" parent="MenuCanvas/MenuContainer/ButtonList/PlayButton/Margin"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="TextVBox" type="VBoxContainer" parent="MenuCanvas/MenuContainer/ButtonList/PlayButton/Margin/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="MenuCanvas/MenuContainer/ButtonList/PlayButton/Margin/HBox/TextVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "PLAY"
+
+[node name="SubLabel" type="Label" parent="MenuCanvas/MenuContainer/ButtonList/PlayButton/Margin/HBox/TextVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "START TOUGE DRIFT ATTACK"
+
+[node name="IconRect" type="TextureRect" parent="MenuCanvas/MenuContainer/ButtonList/PlayButton/Margin/HBox"]
+custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="MapsButton" type="Button" parent="MenuCanvas/MenuContainer/ButtonList"]
+custom_minimum_size = Vector2(360, 115)
+layout_mode = 2
+focus_neighbor_top = NodePath("../PlayButton")
+focus_neighbor_bottom = NodePath("../QuitButton")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+
+[node name="Margin" type="MarginContainer" parent="MenuCanvas/MenuContainer/ButtonList/MapsButton"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 16
+
+[node name="HBox" type="HBoxContainer" parent="MenuCanvas/MenuContainer/ButtonList/MapsButton/Margin"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="TextVBox" type="VBoxContainer" parent="MenuCanvas/MenuContainer/ButtonList/MapsButton/Margin/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="MenuCanvas/MenuContainer/ButtonList/MapsButton/Margin/HBox/TextVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "VIEW MAPS"
+
+[node name="SubLabel" type="Label" parent="MenuCanvas/MenuContainer/ButtonList/MapsButton/Margin/HBox/TextVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "EXPLORE TOUGE TRACKS"
+
+[node name="IconRect" type="TextureRect" parent="MenuCanvas/MenuContainer/ButtonList/MapsButton/Margin/HBox"]
+custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="QuitButton" type="Button" parent="MenuCanvas/MenuContainer/ButtonList"]
+custom_minimum_size = Vector2(360, 115)
+layout_mode = 2
+focus_neighbor_top = NodePath("../MapsButton")
+focus_neighbor_bottom = NodePath("../PlayButton")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+
+[node name="Margin" type="MarginContainer" parent="MenuCanvas/MenuContainer/ButtonList/QuitButton"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 16
+
+[node name="HBox" type="HBoxContainer" parent="MenuCanvas/MenuContainer/ButtonList/QuitButton/Margin"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="TextVBox" type="VBoxContainer" parent="MenuCanvas/MenuContainer/ButtonList/QuitButton/Margin/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="MenuCanvas/MenuContainer/ButtonList/QuitButton/Margin/HBox/TextVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "QUIT"
+
+[node name="SubLabel" type="Label" parent="MenuCanvas/MenuContainer/ButtonList/QuitButton/Margin/HBox/TextVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "EXIT TO DESKTOP"
+
+[node name="IconRect" type="TextureRect" parent="MenuCanvas/MenuContainer/ButtonList/QuitButton/Margin/HBox"]
+custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="MapsContainer" type="MarginContainer" parent="MenuCanvas"]
+visible = false
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 70.0
+offset_top = -275.0
+offset_right = 430.0
+offset_bottom = 275.0
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="MenuCanvas/MapsContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="HeaderBox" type="VBoxContainer" parent="MenuCanvas/MapsContainer/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="HeaderTitle" type="Label" parent="MenuCanvas/MapsContainer/VBox/HeaderBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.97, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.75)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_font_sizes/font_size = 24
+text = "COURSE SELECT"
+
+[node name="HeaderSub" type="Label" parent="MenuCanvas/MapsContainer/VBox/HeaderBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.28, 0.75, 0.92, 1)
+theme_override_font_sizes/font_size = 11
+text = "SELECT TOUGE ATTACK TRACK"
+
+[node name="MapDefaultButton" type="Button" parent="MenuCanvas/MapsContainer/VBox"]
+custom_minimum_size = Vector2(360, 95)
+layout_mode = 2
+focus_neighbor_top = NodePath("../BackToMenuButton")
+focus_neighbor_bottom = NodePath("../MapEbisuButton")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+
+[node name="Margin" type="MarginContainer" parent="MenuCanvas/MapsContainer/VBox/MapDefaultButton"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 16
+
+[node name="HBox" type="HBoxContainer" parent="MenuCanvas/MapsContainer/VBox/MapDefaultButton/Margin"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="TextVBox" type="VBoxContainer" parent="MenuCanvas/MapsContainer/VBox/MapDefaultButton/Margin/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="MenuCanvas/MapsContainer/VBox/MapDefaultButton/Margin/HBox/TextVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "TOUGE PASS"
+
+[node name="SubLabel" type="Label" parent="MenuCanvas/MapsContainer/VBox/MapDefaultButton/Margin/HBox/TextVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "SERPENTINE DOWNHILL // 1.26 KM"
+
+[node name="IconRect" type="TextureRect" parent="MenuCanvas/MapsContainer/VBox/MapDefaultButton/Margin/HBox"]
+custom_minimum_size = Vector2(54, 54)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="MapEbisuButton" type="Button" parent="MenuCanvas/MapsContainer/VBox"]
+custom_minimum_size = Vector2(360, 95)
+layout_mode = 2
+focus_neighbor_top = NodePath("../MapDefaultButton")
+focus_neighbor_bottom = NodePath("../BackToMenuButton")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+
+[node name="Margin" type="MarginContainer" parent="MenuCanvas/MapsContainer/VBox/MapEbisuButton"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 16
+
+[node name="HBox" type="HBoxContainer" parent="MenuCanvas/MapsContainer/VBox/MapEbisuButton/Margin"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="TextVBox" type="VBoxContainer" parent="MenuCanvas/MapsContainer/VBox/MapEbisuButton/Margin/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="MenuCanvas/MapsContainer/VBox/MapEbisuButton/Margin/HBox/TextVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "EBISU CIRCUIT"
+
+[node name="SubLabel" type="Label" parent="MenuCanvas/MapsContainer/VBox/MapEbisuButton/Margin/HBox/TextVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "COMPOUND DRIFT ARENA // 16M ROAD"
+
+[node name="IconRect" type="TextureRect" parent="MenuCanvas/MapsContainer/VBox/MapEbisuButton/Margin/HBox"]
+custom_minimum_size = Vector2(54, 54)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="MapSplitScreenButton" type="Button" parent="MenuCanvas/MapsContainer/VBox"]
+custom_minimum_size = Vector2(360, 95)
+layout_mode = 2
+focus_neighbor_top = NodePath("../MapEbisuButton")
+focus_neighbor_bottom = NodePath("../BackToMenuButton")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+
+[node name="Margin" type="MarginContainer" parent="MenuCanvas/MapsContainer/VBox/MapSplitScreenButton"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 16
+
+[node name="HBox" type="HBoxContainer" parent="MenuCanvas/MapsContainer/VBox/MapSplitScreenButton/Margin"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="TextVBox" type="VBoxContainer" parent="MenuCanvas/MapsContainer/VBox/MapSplitScreenButton/Margin/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="MenuCanvas/MapsContainer/VBox/MapSplitScreenButton/Margin/HBox/TextVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "2P SPLIT-SCREEN"
+
+[node name="SubLabel" type="Label" parent="MenuCanvas/MapsContainer/VBox/MapSplitScreenButton/Margin/HBox/TextVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "LOCAL 2-PLAYER VERSUS BATTLE"
+
+[node name="IconRect" type="TextureRect" parent="MenuCanvas/MapsContainer/VBox/MapSplitScreenButton/Margin/HBox"]
+custom_minimum_size = Vector2(54, 54)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="BackToMenuButton" type="Button" parent="MenuCanvas/MapsContainer/VBox"]
+custom_minimum_size = Vector2(360, 80)
+layout_mode = 2
+focus_neighbor_top = NodePath("../MapSplitScreenButton")
+focus_neighbor_bottom = NodePath("../MapDefaultButton")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+
+[node name="Margin" type="MarginContainer" parent="MenuCanvas/MapsContainer/VBox/BackToMenuButton"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 16
+
+[node name="HBox" type="HBoxContainer" parent="MenuCanvas/MapsContainer/VBox/BackToMenuButton/Margin"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="TextVBox" type="VBoxContainer" parent="MenuCanvas/MapsContainer/VBox/BackToMenuButton/Margin/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="MenuCanvas/MapsContainer/VBox/BackToMenuButton/Margin/HBox/TextVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "BACK TO MENU"
+
+[node name="SubLabel" type="Label" parent="MenuCanvas/MapsContainer/VBox/BackToMenuButton/Margin/HBox/TextVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "RETURN TO MAIN TILES"
+
+[node name="IconRect" type="TextureRect" parent="MenuCanvas/MapsContainer/VBox/BackToMenuButton/Margin/HBox"]
+custom_minimum_size = Vector2(54, 54)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="CarSelectContainer" type="MarginContainer" parent="MenuCanvas"]
+visible = false
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 70.0
+offset_top = -250.0
+offset_right = 450.0
+offset_bottom = 250.0
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="MenuCanvas/CarSelectContainer"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="HeaderBox" type="VBoxContainer" parent="MenuCanvas/CarSelectContainer/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="HeaderTitle" type="Label" parent="MenuCanvas/CarSelectContainer/VBox/HeaderBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.97, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.75)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_font_sizes/font_size = 24
+text = "SELECT MACHINE"
+
+[node name="HeaderSub" type="Label" parent="MenuCanvas/CarSelectContainer/VBox/HeaderBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.28, 0.75, 0.92, 1)
+theme_override_font_sizes/font_size = 11
+text = "CHOOSE JDM DRIFT MACHINE"
+
+[node name="CarAE86Button" type="Button" parent="MenuCanvas/CarSelectContainer/VBox"]
+custom_minimum_size = Vector2(380, 80)
+layout_mode = 2
+focus_neighbor_top = NodePath("../BackToMapsButton")
+focus_neighbor_bottom = NodePath("../CarRX7Button")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+
+[node name="Margin" type="MarginContainer" parent="MenuCanvas/CarSelectContainer/VBox/CarAE86Button"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 12
+
+[node name="HBox" type="HBoxContainer" parent="MenuCanvas/CarSelectContainer/VBox/CarAE86Button/Margin"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="TextVBox" type="VBoxContainer" parent="MenuCanvas/CarSelectContainer/VBox/CarAE86Button/Margin/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="MenuCanvas/CarSelectContainer/VBox/CarAE86Button/Margin/HBox/TextVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "PANDA AE86 TRUENO"
+
+[node name="SubLabel" type="Label" parent="MenuCanvas/CarSelectContainer/VBox/CarAE86Button/Margin/HBox/TextVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "JDM CLASSIC // TWIN-CAM 16V"
+
+[node name="BadgeLabel" type="Label" parent="MenuCanvas/CarSelectContainer/VBox/CarAE86Button/Margin/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
+theme_override_font_sizes/font_size = 11
+text = "[SELECTED]"
+
+[node name="IconRect" type="TextureRect" parent="MenuCanvas/CarSelectContainer/VBox/CarAE86Button/Margin/HBox"]
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="CarRX7Button" type="Button" parent="MenuCanvas/CarSelectContainer/VBox"]
+custom_minimum_size = Vector2(380, 80)
+layout_mode = 2
+focus_neighbor_top = NodePath("../CarAE86Button")
+focus_neighbor_bottom = NodePath("../CarS15Button")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+
+[node name="Margin" type="MarginContainer" parent="MenuCanvas/CarSelectContainer/VBox/CarRX7Button"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 12
+
+[node name="HBox" type="HBoxContainer" parent="MenuCanvas/CarSelectContainer/VBox/CarRX7Button/Margin"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="TextVBox" type="VBoxContainer" parent="MenuCanvas/CarSelectContainer/VBox/CarRX7Button/Margin/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="MenuCanvas/CarSelectContainer/VBox/CarRX7Button/Margin/HBox/TextVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "ROTARY RX-7 FD"
+
+[node name="SubLabel" type="Label" parent="MenuCanvas/CarSelectContainer/VBox/CarRX7Button/Margin/HBox/TextVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "MIDNIGHT BLUE // TWIN-TURBO 13B"
+
+[node name="BadgeLabel" type="Label" parent="MenuCanvas/CarSelectContainer/VBox/CarRX7Button/Margin/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
+theme_override_font_sizes/font_size = 11
+text = ""
+
+[node name="IconRect" type="TextureRect" parent="MenuCanvas/CarSelectContainer/VBox/CarRX7Button/Margin/HBox"]
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="CarS15Button" type="Button" parent="MenuCanvas/CarSelectContainer/VBox"]
+custom_minimum_size = Vector2(380, 80)
+layout_mode = 2
+focus_neighbor_top = NodePath("../CarRX7Button")
+focus_neighbor_bottom = NodePath("../StartDriftButton")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+
+[node name="Margin" type="MarginContainer" parent="MenuCanvas/CarSelectContainer/VBox/CarS15Button"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 12
+
+[node name="HBox" type="HBoxContainer" parent="MenuCanvas/CarSelectContainer/VBox/CarS15Button/Margin"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="TextVBox" type="VBoxContainer" parent="MenuCanvas/CarSelectContainer/VBox/CarS15Button/Margin/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="MenuCanvas/CarSelectContainer/VBox/CarS15Button/Margin/HBox/TextVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "SILVIA S15 SPEC-R"
+
+[node name="SubLabel" type="Label" parent="MenuCanvas/CarSelectContainer/VBox/CarS15Button/Margin/HBox/TextVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "CRIMSON RED // SR20DET TURBO"
+
+[node name="BadgeLabel" type="Label" parent="MenuCanvas/CarSelectContainer/VBox/CarS15Button/Margin/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
+theme_override_font_sizes/font_size = 11
+text = ""
+
+[node name="IconRect" type="TextureRect" parent="MenuCanvas/CarSelectContainer/VBox/CarS15Button/Margin/HBox"]
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="StartDriftButton" type="Button" parent="MenuCanvas/CarSelectContainer/VBox"]
+custom_minimum_size = Vector2(380, 72)
+layout_mode = 2
+focus_neighbor_top = NodePath("../CarS15Button")
+focus_neighbor_bottom = NodePath("../BackToMapsButton")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+
+[node name="Margin" type="MarginContainer" parent="MenuCanvas/CarSelectContainer/VBox/StartDriftButton"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 10
+
+[node name="HBox" type="HBoxContainer" parent="MenuCanvas/CarSelectContainer/VBox/StartDriftButton/Margin"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="TextVBox" type="VBoxContainer" parent="MenuCanvas/CarSelectContainer/VBox/StartDriftButton/Margin/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="MenuCanvas/CarSelectContainer/VBox/StartDriftButton/Margin/HBox/TextVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
+theme_override_font_sizes/font_size = 22
+text = "START DRIFTING"
+
+[node name="SubLabel" type="Label" parent="MenuCanvas/CarSelectContainer/VBox/StartDriftButton/Margin/HBox/TextVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "LAUNCH DRIFT ATTACK // 出走"
+
+[node name="IconRect" type="TextureRect" parent="MenuCanvas/CarSelectContainer/VBox/StartDriftButton/Margin/HBox"]
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="BackToMapsButton" type="Button" parent="MenuCanvas/CarSelectContainer/VBox"]
+custom_minimum_size = Vector2(380, 50)
+layout_mode = 2
+focus_neighbor_top = NodePath("../StartDriftButton")
+focus_neighbor_bottom = NodePath("../CarAE86Button")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+
+[node name="Margin" type="MarginContainer" parent="MenuCanvas/CarSelectContainer/VBox/BackToMapsButton"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 8
+
+[node name="HBox" type="HBoxContainer" parent="MenuCanvas/CarSelectContainer/VBox/BackToMapsButton/Margin"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="TextVBox" type="VBoxContainer" parent="MenuCanvas/CarSelectContainer/VBox/BackToMapsButton/Margin/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="MenuCanvas/CarSelectContainer/VBox/BackToMapsButton/Margin/HBox/TextVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "BACK TO MAPS"
+
+[node name="SubLabel" type="Label" parent="MenuCanvas/CarSelectContainer/VBox/BackToMapsButton/Margin/HBox/TextVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 9
+text = "CHANGE TOUGE COURSE"
+
+[node name="IconRect" type="TextureRect" parent="MenuCanvas/CarSelectContainer/VBox/BackToMapsButton/Margin/HBox"]
+custom_minimum_size = Vector2(36, 36)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LoadingContainer" type="Control" parent="MenuCanvas"]
+visible = false
+layout_mode = 3
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -240.0
+offset_top = -100.0
+offset_right = 240.0
+offset_bottom = -30.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="VBox" type="VBoxContainer" parent="MenuCanvas/LoadingContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="LoadingLabel" type="Label" parent="MenuCanvas/LoadingContainer/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.95, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.75)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 14
+text = "LOADING TOUGE PASS..."
+horizontal_alignment = 1
+
+[node name="ProgressBar" type="ProgressBar" parent="MenuCanvas/LoadingContainer/VBox"]
+custom_minimum_size = Vector2(480, 14)
+layout_mode = 2
+theme_override_styles/background = SubResource("StyleBoxFlat_loading_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_loading_fill")
+show_percentage = false

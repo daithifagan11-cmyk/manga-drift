@@ -1,0 +1,723 @@
+class_name DriftCar
+extends VehicleBody3D
+
+signal drift_updated(info: Dictionary)
+signal combo_increased(new_multiplier: int)
+signal wall_hit()
+signal drift_banked(amount: float)
+signal high_angle_drift_started()
+
+@export var max_engine_force: float = 3400.0
+@export var max_steer_angle: float = 0.58
+@export var steer_speed: float = 5.5
+@export var arcade_boost_accel: float = 20.0
+@export var max_speed_kmh: float = 100.0
+
+# Player Input & Split-Screen configuration
+@export var player_id: int = 1 ## 1 = Player 1 (WASD / Gamepad 0), 2 = Player 2 (Arrows / Shift / Gamepad 1), 0 = Solo / Any
+@export var is_split_screen: bool = false
+
+# Tuck factor to pull protruding rims flush inside the fenders
+@export var wheel_track_half_width: float = 0.82
+
+# Scoring & Stage settings
+@export var combo_bank_time: float = 2.5 ## seconds of straight driving before combo banks
+@export var score_rate_scale: float = 0.65 ## score multiplier
+@export var stage_duration: float = 120.0 ## seconds stage timer
+
+var current_speed_kmh: float = 0.0
+var drift_angle_deg: float = 0.0
+var drift_side: float = 0.0 # +1 = sliding left, -1 = sliding right
+var is_drifting: bool = false
+var is_high_angle: bool = false
+var spawn_transform: Transform3D
+
+# Scoring & State
+var previous_drift_side: int = 0
+var combo_multiplier: int = 1
+var unbanked_score: float = 0.0
+var total_banked_score: float = 0.0
+var straight_driving_timer: float = 0.0
+var stage_time_left: float = 120.0
+var is_stage_running: bool = true
+var time_up_triggered: bool = false
+var time_left: float:
+	get:
+		return stage_time_left
+	set(val):
+		stage_time_left = val
+		if stage_time_left <= 0.0 and not time_up_triggered:
+			_trigger_return_to_main_menu()
+
+var _last_high_angle_popup_time: float = 0.0
+var onomatopoeia_scene: PackedScene = preload("res://scenes/onomatopoeia.tscn")
+
+# Control inputs
+var throttle_input: float = 0.0
+var steer_input: float = 0.0
+var handbrake: bool = false
+
+# Wheel references
+@onready var wheel_fl: VehicleWheel3D = $WheelFL
+@onready var wheel_fr: VehicleWheel3D = $WheelFR
+@onready var wheel_rl: VehicleWheel3D = $WheelRL
+@onready var wheel_rr: VehicleWheel3D = $WheelRR
+
+# Tire smoke particle references
+@onready var smoke_left: GPUParticles3D = get_node_or_null("WheelRL/SmokeLeft")
+@onready var smoke_right: GPUParticles3D = get_node_or_null("WheelRR/SmokeRight")
+
+# Visual & Lighting references
+@onready var neon_underglow: OmniLight3D = get_node_or_null("NeonUnderglow")
+@onready var brake_light_omni: OmniLight3D = get_node_or_null("BrakeLight")
+@onready var taillight_mesh: MeshInstance3D = get_node_or_null("CarModel/TaillightRed")
+@onready var exhaust_flame: GPUParticles3D = get_node_or_null("ExhaustFlame")
+@onready var exhaust_flash: OmniLight3D = get_node_or_null("ExhaustFlash")
+
+var _taillight_mat: StandardMaterial3D
+var _prev_throttle_input: float = 0.0
+var _slip_speed: float = 0.0
+
+# Horn audio player & cooldown
+var horn_audio: AudioStreamPlayer3D
+var horn_cooldown: float = 0.0
+var horn_player: AudioStreamPlayer3D:
+	get:
+		return horn_audio
+	set(val):
+		horn_audio = val
+
+func _ready() -> void:
+	spawn_transform = global_transform
+	mass = 1150.0
+	center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
+	center_of_mass = Vector3(0.0, -0.30, 0.04)
+	
+	# Keeps rotation stable while allowing faster straight-line and drift speed
+	angular_damp = 2.4
+	linear_damp = 0.35
+	
+	contact_monitor = true
+	max_contacts_reported = 4
+	body_entered.connect(_on_body_entered)
+	stage_time_left = stage_duration
+	_setup_tire_smoke()
+	_setup_car_horn()
+	_setup_visual_lighting()
+	_setup_enhanced_car_visuals()
+	neon_underglow = get_node_or_null("NeonUnderglow")
+
+	if is_split_screen:
+		# In split screen, dedicated SubViewport cameras and HUDs are used
+		var built_in_cam = get_node_or_null("CameraPivot")
+		if built_in_cam:
+			built_in_cam.queue_free()
+		var built_in_hud = get_node_or_null("DriftHUD")
+		if built_in_hud:
+			built_in_hud.queue_free()
+	
+	for child in get_children():
+		if child is CollisionShape3D and child.position.y < 0.55:
+			child.position.y = 0.65
+		elif child is VehicleWheel3D:
+			# 1. Tuck wheels & protruding rims flush under the fender arches
+			var side_sign: float = sign(child.position.x)
+			if abs(child.position.x) > wheel_track_half_width:
+				child.position.x = side_sign * wheel_track_half_width
+			for mesh_child in child.get_children():
+				if mesh_child is Node3D and abs(mesh_child.position.x) > 0.03:
+					mesh_child.position.x *= 0.35 # Pull sticking-out rim caps inward
+			
+			child.wheel_radius = 0.35
+			child.wheel_rest_length = 0.24
+			child.suspension_travel = 0.30
+			child.suspension_stiffness = 26.0
+			child.damping_compression = 0.60
+			child.damping_relaxation = 0.70
+			child.wheel_roll_influence = 0.22
+			
+			if child.position.z < 0.0:
+				child.use_as_steering = true
+				child.use_as_traction = true
+				child.wheel_friction_slip = 2.45 # Grippy front tires for sharp turn-in
+			else:
+				child.use_as_traction = true
+				child.wheel_friction_slip = 1.60 # Looser rear tires for natural oversteer
+
+func _physics_process(delta: float) -> void:
+	_check_horn_input(delta)
+
+	throttle_input = 0.0
+	steer_input = 0.0
+	handbrake = false
+
+	if player_id == 1:
+		# Player 1: WASD, Space, Gamepad 0
+		if Input.is_key_pressed(KEY_R) or Input.is_joy_button_pressed(0, JOY_BUTTON_BACK):
+			_reset_car()
+			return
+
+		if Input.is_key_pressed(KEY_W) or Input.is_joy_button_pressed(0, JOY_BUTTON_A) or Input.get_joy_axis(0, JOY_AXIS_TRIGGER_RIGHT) > 0.2:
+			throttle_input += 1.0
+		if Input.is_key_pressed(KEY_S) or Input.is_joy_button_pressed(0, JOY_BUTTON_B) or Input.get_joy_axis(0, JOY_AXIS_TRIGGER_LEFT) > 0.2:
+			throttle_input -= 1.0
+
+		if Input.is_key_pressed(KEY_A) or Input.get_joy_axis(0, JOY_AXIS_LEFT_X) < -0.2 or Input.is_joy_button_pressed(0, JOY_BUTTON_DPAD_LEFT):
+			steer_input += 1.0
+		if Input.is_key_pressed(KEY_D) or Input.get_joy_axis(0, JOY_AXIS_LEFT_X) > 0.2 or Input.is_joy_button_pressed(0, JOY_BUTTON_DPAD_RIGHT):
+			steer_input -= 1.0
+
+		handbrake = (
+			Input.is_key_pressed(KEY_SPACE) or 
+			Input.is_joy_button_pressed(0, JOY_BUTTON_X) or 
+			Input.is_joy_button_pressed(0, JOY_BUTTON_RIGHT_SHOULDER)
+		)
+
+	elif player_id == 2:
+		# Player 2: Arrow Keys, Shift / KP_0 / Enter, Gamepad 1
+		if Input.is_key_pressed(KEY_BACKSPACE) or Input.is_key_pressed(KEY_KP_PERIOD) or Input.is_joy_button_pressed(1, JOY_BUTTON_BACK):
+			_reset_car()
+			return
+
+		if Input.is_key_pressed(KEY_UP) or Input.is_joy_button_pressed(1, JOY_BUTTON_A) or Input.get_joy_axis(1, JOY_AXIS_TRIGGER_RIGHT) > 0.2:
+			throttle_input += 1.0
+		if Input.is_key_pressed(KEY_DOWN) or Input.is_joy_button_pressed(1, JOY_BUTTON_B) or Input.get_joy_axis(1, JOY_AXIS_TRIGGER_LEFT) > 0.2:
+			throttle_input -= 1.0
+
+		if Input.is_key_pressed(KEY_LEFT) or Input.get_joy_axis(1, JOY_AXIS_LEFT_X) < -0.2 or Input.is_joy_button_pressed(1, JOY_BUTTON_DPAD_LEFT):
+			steer_input += 1.0
+		if Input.is_key_pressed(KEY_RIGHT) or Input.get_joy_axis(1, JOY_AXIS_LEFT_X) > 0.2 or Input.is_joy_button_pressed(1, JOY_BUTTON_DPAD_RIGHT):
+			steer_input -= 1.0
+
+		handbrake = (
+			Input.is_key_pressed(KEY_SHIFT) or 
+			Input.is_key_pressed(KEY_KP_0) or 
+			Input.is_key_pressed(KEY_ENTER) or 
+			Input.is_joy_button_pressed(1, JOY_BUTTON_X) or 
+			Input.is_joy_button_pressed(1, JOY_BUTTON_RIGHT_SHOULDER)
+		)
+
+	else:
+		# Solo / Any Input
+		if Input.is_key_pressed(KEY_R) or Input.is_action_just_pressed("reset_car"):
+			_reset_car()
+			return
+
+		if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP) or Input.is_action_pressed("throttle") or Input.is_action_pressed("ui_up"):
+			throttle_input += 1.0
+		if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN) or Input.is_action_pressed("brake") or Input.is_action_pressed("ui_down"):
+			throttle_input -= 1.0
+
+		if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT) or Input.is_action_pressed("steer_left") or Input.is_action_pressed("ui_left"):
+			steer_input += 1.0
+		if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT) or Input.is_action_pressed("steer_right") or Input.is_action_pressed("ui_right"):
+			steer_input -= 1.0
+
+		handbrake = (
+			Input.is_key_pressed(KEY_SPACE) or 
+			Input.is_action_pressed("handbrake") or 
+			Input.is_action_pressed("ui_select")
+		)
+
+	var forward_dir: Vector3 = -global_transform.basis.z
+	forward_dir.y = 0.0
+	forward_dir = forward_dir.normalized()
+	
+	var right_dir: Vector3 = global_transform.basis.x
+	right_dir.y = 0.0
+	right_dir = right_dir.normalized()
+
+	# Clamp horizontal velocity so current_speed_kmh never exceeds max_speed_kmh
+	var max_speed_mps: float = max_speed_kmh / 3.6
+	var horiz_vel: Vector3 = Vector3(linear_velocity.x, 0.0, linear_velocity.z)
+	var horiz_speed: float = horiz_vel.length()
+	if horiz_speed > max_speed_mps:
+		var clamped_horiz = (horiz_vel / horiz_speed) * max_speed_mps
+		linear_velocity.x = clamped_horiz.x
+		linear_velocity.z = clamped_horiz.z
+		horiz_vel = clamped_horiz
+		horiz_speed = max_speed_mps
+
+	current_speed_kmh = clampf(horiz_speed * 3.6, 0.0, max_speed_kmh)
+
+	# Speed-sensitive steering so high speeds stay stable
+	var speed_factor: float = clamp(1.0 - (current_speed_kmh / 210.0), 0.55, 1.0)
+	var target_steer: float = steer_input * max_steer_angle * speed_factor
+	steering = move_toward(steering, target_steer, steer_speed * delta)
+
+	# Cut engine force cleanly at max_speed_kmh
+	if throttle_input > 0.0 and current_speed_kmh >= max_speed_kmh:
+		engine_force = 0.0
+	else:
+		engine_force = throttle_input * max_engine_force
+	
+	# Lighter coasting drag so the car doesn't bog down between corners
+	if abs(throttle_input) < 0.05:
+		brake = 8.0
+	elif throttle_input < 0.0 and current_speed_kmh > 10.0 and linear_velocity.dot(forward_dir) > 0.0:
+		brake = 45.0
+	else:
+		brake = 0.0
+
+	if abs(throttle_input) > 0.05 and current_speed_kmh < max_speed_kmh:
+		apply_central_force(forward_dir * throttle_input * mass * arcade_boost_accel)
+
+	# Calculate drift angle and lateral slide speed
+	horiz_vel = Vector3(linear_velocity.x, 0.0, linear_velocity.z)
+	var sideways_speed: float = horiz_vel.dot(right_dir)
+	if horiz_vel.length() > 2.0:
+		var norm_vel: Vector3 = horiz_vel.normalized()
+		drift_angle_deg = rad_to_deg(forward_dir.angle_to(norm_vel))
+		if drift_angle_deg > 90.0:
+			drift_angle_deg = 180.0 - drift_angle_deg
+		drift_side = signf(forward_dir.cross(norm_vel).y)
+	else:
+		drift_angle_deg = 0.0
+		drift_side = 0.0
+
+	var turning_at_speed: bool = abs(steer_input) > 0.2 and current_speed_kmh > 18.0
+	var target_rear_slip: float = 1.60
+	
+	if handbrake:
+		target_rear_slip = 0.92
+	elif turning_at_speed or drift_angle_deg > 10.0:
+		target_rear_slip = 1.12
+
+	for child in get_children():
+		if child is VehicleWheel3D and child.position.z >= 0.0:
+			child.wheel_friction_slip = move_toward(child.wheel_friction_slip, target_rear_slip, 4.5 * delta)
+
+	# Controlled Yaw Assist & stronger mid-drift speed maintenance
+	if current_speed_kmh > 18.0:
+		if handbrake:
+			apply_torque(Vector3(0.0, steer_input * mass * 4.6, 0.0))
+		elif abs(steer_input) > 0.15 and drift_angle_deg < 44.0:
+			apply_torque(Vector3(0.0, steer_input * mass * 3.2, 0.0))
+		
+		if drift_angle_deg > 10.0:
+			if throttle_input > 0.1 and current_speed_kmh < max_speed_kmh * 0.95:
+				var slide_forward: Vector3 = (forward_dir * 0.65 + horiz_vel.normalized() * 0.35).normalized()
+				apply_central_force(slide_forward * mass * 7.5)
+			apply_central_force(-right_dir * sideways_speed * mass * 1.55)
+
+	is_drifting = current_speed_kmh > 18.0 and drift_angle_deg > 10.0
+	is_high_angle = is_drifting and (drift_angle_deg >= 25.0)
+
+	# Update rear tire smoke emission dynamically based on tire slip velocity (slip_speed > 3.0)
+	var forward_speed: float = forward_dir.dot(linear_velocity)
+	_slip_speed = abs(sideways_speed)
+	if handbrake:
+		_slip_speed = maxf(_slip_speed, abs(forward_speed) * 0.75 + 4.0)
+	elif is_drifting:
+		_slip_speed = maxf(_slip_speed, (drift_angle_deg / 12.0) * (current_speed_kmh * 0.18))
+
+	var should_emit_smoke: bool = _slip_speed > 3.0
+	if should_emit_smoke:
+		var smoke_ratio: float = clampf((_slip_speed - 3.0) / 10.0, 0.25, 1.0)
+		if smoke_left != null:
+			smoke_left.emitting = true
+			smoke_left.amount_ratio = smoke_ratio
+		if smoke_right != null:
+			smoke_right.emitting = true
+			smoke_right.amount_ratio = smoke_ratio
+	else:
+		if smoke_left != null and smoke_left.emitting:
+			smoke_left.emitting = false
+		if smoke_right != null and smoke_right.emitting:
+			smoke_right.emitting = false
+
+	# Dynamic glowing brake lights (high-intensity red bloom when braking)
+	var is_braking: bool = (brake > 5.0 or handbrake or (throttle_input < -0.1 and current_speed_kmh > 3.0))
+	if _taillight_mat != null:
+		var target_emission: float = 8.5 if is_braking else 2.5
+		_taillight_mat.emission_energy_multiplier = lerpf(_taillight_mat.emission_energy_multiplier, target_emission, delta * 15.0)
+	if brake_light_omni != null:
+		var target_omni_energy: float = 4.2 if is_braking else 0.8
+		brake_light_omni.light_energy = lerpf(brake_light_omni.light_energy, target_omni_energy, delta * 15.0)
+
+	# Exhaust flame & backfire flash on sharp throttle cut or high-speed handbrake entry
+	if _prev_throttle_input > 0.65 and throttle_input <= 0.08 and current_speed_kmh > 26.0:
+		_trigger_exhaust_backfire()
+	elif handbrake and current_speed_kmh > 42.0 and _prev_throttle_input > 0.45:
+		_trigger_exhaust_backfire()
+	_prev_throttle_input = throttle_input
+
+	if exhaust_flash != null and exhaust_flash.light_energy > 0.01:
+		exhaust_flash.light_energy = lerpf(exhaust_flash.light_energy, 0.0, delta * 14.0)
+
+	# Ensure horizontal speed remains strictly capped at max_speed_kmh
+	var final_horiz: Vector3 = Vector3(linear_velocity.x, 0.0, linear_velocity.z)
+	var final_speed: float = final_horiz.length()
+	if final_speed > max_speed_mps:
+		var clamped_final = (final_horiz / final_speed) * max_speed_mps
+		linear_velocity.x = clamped_final.x
+		linear_velocity.z = clamped_final.z
+		final_speed = max_speed_mps
+	current_speed_kmh = clampf(final_speed * 3.6, 0.0, max_speed_kmh)
+
+	_update_stage_timer(delta)
+	_update_scoring(delta)
+	_emit_hud_info()
+
+func _update_stage_timer(delta: float) -> void:
+	if not is_stage_running and time_up_triggered:
+		return
+	stage_time_left -= delta
+	if stage_time_left <= 0.0:
+		stage_time_left = 0.0
+		is_stage_running = false
+		_bank_current_combo()
+		if not time_up_triggered:
+			_trigger_return_to_main_menu()
+
+func _trigger_return_to_main_menu() -> void:
+	if time_up_triggered:
+		return
+	stage_time_left = 0.0
+	time_up_triggered = true
+	_bank_current_combo()
+	if not is_split_screen:
+		var hud = get_node_or_null("DriftHUD")
+		if hud == null and get_parent() != null:
+			hud = get_parent().get_node_or_null("DriftHUD")
+		if hud != null and hud.has_method("_check_and_save_high_score"):
+			hud._check_and_save_high_score()
+	if get_tree() != null:
+		get_tree().paused = false
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	if get_tree() != null:
+		get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
+
+func _update_scoring(delta: float) -> void:
+	var vel_horizontal = Vector3(linear_velocity.x, 0.0, linear_velocity.z)
+	var speed_mps = vel_horizontal.length()
+	
+	if is_drifting and is_stage_running:
+		# Reset straight driving timer during active drift
+		straight_driving_timer = 0.0
+		
+		# Transition drift detection (switching left to right or vice-versa)
+		var current_side_int = int(drift_side)
+		if current_side_int != 0:
+			if previous_drift_side != 0 and current_side_int != previous_drift_side:
+				# Chained transition between left and right!
+				combo_multiplier = clampi(combo_multiplier + 1, 1, 10)
+				combo_increased.emit(combo_multiplier)
+				_spawn_onomatopoeia("DRIFT!", _get_rear_tire_pos(), Color(1.0, 0.85, 0.1))
+			elif previous_drift_side == 0:
+				# Drift initiation popup
+				_spawn_onomatopoeia("GOGOGO!", _get_rear_tire_pos(), Color(1.0, 0.95, 0.2))
+				
+			previous_drift_side = current_side_int
+			
+		# Accrue live unbanked drift points based on: Drift Angle * Speed * Combo Multiplier
+		var frame_points = drift_angle_deg * speed_mps * float(combo_multiplier) * delta * score_rate_scale
+		unbanked_score += frame_points
+		
+		# Spawn floating manga sound-effect text ('GOGOGO!', 'DRIFT!') above rear tires during high-angle slides
+		if is_high_angle:
+			var current_time = Time.get_ticks_msec() / 1000.0
+			if current_time - _last_high_angle_popup_time > 0.42:
+				_last_high_angle_popup_time = current_time
+				_spawn_high_angle_sound_effect()
+	else:
+		# Straight driving: count up to 2.5 seconds before banking combos
+		straight_driving_timer += delta
+		if straight_driving_timer >= combo_bank_time:
+			if unbanked_score > 0.0:
+				_bank_current_combo()
+			combo_multiplier = 1
+			previous_drift_side = 0
+
+func _bank_current_combo() -> void:
+	if int(unbanked_score) > 0:
+		total_banked_score += unbanked_score
+		drift_banked.emit(unbanked_score)
+		unbanked_score = 0.0
+	else:
+		unbanked_score = 0.0
+
+func _on_body_entered(body: Node) -> void:
+	# Cancel combos on wall collisions
+	var hit_speed = linear_velocity.length()
+	if hit_speed > 3.5:
+		unbanked_score = 0.0
+		combo_multiplier = 1
+		previous_drift_side = 0
+		straight_driving_timer = 0.0
+		wall_hit.emit()
+		_spawn_onomatopoeia("CRASH!", global_position + Vector3(0, 0.9, 0), Color(1.0, 0.2, 0.2))
+
+func _spawn_high_angle_sound_effect() -> void:
+	var sounds = ["GOGOGO!", "DRIFT!"]
+	var selected_sound = sounds[randi() % sounds.size()]
+	var color = Color(1.0, 0.92, 0.1) if selected_sound == "GOGOGO!" else Color(1.0, 0.45, 0.1)
+	var spawn_pos = _get_rear_tire_pos()
+	_spawn_onomatopoeia(selected_sound, spawn_pos, color)
+
+func _spawn_onomatopoeia(text: String, spawn_pos: Vector3, color: Color = Color(1.0, 0.95, 0.3)) -> void:
+	if onomatopoeia_scene == null:
+		return
+	var popup = onomatopoeia_scene.instantiate() as OnomatopoeiaPopup
+	if popup == null:
+		return
+	get_tree().root.add_child(popup)
+	popup.global_position = spawn_pos
+	popup.setup(text, color)
+
+func _get_rear_tire_pos() -> Vector3:
+	var chosen_wheel = wheel_rl if (randi() % 2 == 0) else wheel_rr
+	if chosen_wheel != null:
+		return chosen_wheel.global_position + Vector3(randf_range(-0.15, 0.15), 0.75, randf_range(-0.15, 0.15))
+	return global_position + Vector3(0, 0.75, 1.2)
+
+func _reset_car() -> void:
+	global_transform = spawn_transform
+	linear_velocity = Vector3.ZERO
+	angular_velocity = Vector3.ZERO
+	steering = 0.0
+	engine_force = 0.0
+	brake = 0.0
+	unbanked_score = 0.0
+	combo_multiplier = 1
+	straight_driving_timer = 0.0
+	if smoke_left != null:
+		smoke_left.emitting = false
+	if smoke_right != null:
+		smoke_right.emitting = false
+
+func _setup_tire_smoke() -> void:
+	if smoke_left == null:
+		smoke_left = get_node_or_null("WheelRL/SmokeLeft")
+	if smoke_right == null:
+		smoke_right = get_node_or_null("WheelRR/SmokeRight")
+	
+	for child in get_children():
+		if child is VehicleWheel3D and child.position.z >= 0.0:
+			var is_left: bool = child.position.x < 0.0
+			var smoke_name: String = "SmokeLeft" if is_left else "SmokeRight"
+			var smoke_node = child.get_node_or_null(smoke_name) as GPUParticles3D
+			if smoke_node == null:
+				smoke_node = _create_smoke_particles(smoke_name)
+				child.add_child(smoke_node)
+				smoke_node.position = Vector3(0.0, -0.25, 0.2)
+			if is_left:
+				smoke_left = smoke_node
+			else:
+				smoke_right = smoke_node
+
+func _setup_visual_lighting() -> void:
+	if taillight_mesh != null:
+		var base_mat: Material = null
+		if taillight_mesh.mesh and taillight_mesh.mesh.material is StandardMaterial3D:
+			base_mat = taillight_mesh.mesh.material
+		elif taillight_mesh.material_override is StandardMaterial3D:
+			base_mat = taillight_mesh.material_override
+		if base_mat is StandardMaterial3D:
+			_taillight_mat = base_mat.duplicate() as StandardMaterial3D
+			taillight_mesh.material_override = _taillight_mat
+
+func _setup_enhanced_car_visuals() -> void:
+	var car_mesh := find_child("CarBodyMesh", true, false) as MeshInstance3D
+	if car_mesh:
+		var paint_mat := StandardMaterial3D.new()
+		paint_mat.albedo_color = Color(0.08, 0.08, 0.1) # Deep midnight metallic
+		paint_mat.metallic = 0.9
+		paint_mat.roughness = 0.15
+		paint_mat.clearcoat_enabled = true
+		paint_mat.clearcoat = 1.0
+		car_mesh.material_override = paint_mat
+
+	# Neon Underglow Light
+	var underglow := OmniLight3D.new()
+	underglow.name = "NeonUnderglow"
+	underglow.light_color = Color(0.2, 0.6, 1.0) # Electric Cyan
+	underglow.light_energy = 2.5
+	underglow.omni_range = 3.5
+	underglow.position = Vector3(0, -0.3, 0)
+	add_child(underglow)
+
+func _trigger_exhaust_backfire() -> void:
+	if exhaust_flame != null:
+		exhaust_flame.restart()
+		exhaust_flame.emitting = true
+	if exhaust_flash != null:
+		exhaust_flash.light_energy = 5.5
+	var cam = get_node_or_null("CameraPivot")
+	if cam != null and cam.has_method("trigger_shake"):
+		cam.trigger_shake(0.18)
+
+func _create_smoke_particles(p_name: String) -> GPUParticles3D:
+	var particles := GPUParticles3D.new()
+	particles.name = p_name
+	particles.emitting = false
+	particles.amount = 80
+	particles.lifetime = 1.25
+	particles.explosiveness = 0.0
+	particles.randomness = 0.45
+	particles.local_coords = false
+	particles.position = Vector3(0.0, -0.25, 0.2)
+	
+	var mat := ParticleProcessMaterial.new()
+	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	mat.emission_sphere_radius = 0.25
+	mat.direction = Vector3(0.0, 0.25, 1.0)
+	mat.spread = 42.0
+	mat.initial_velocity_min = 1.8
+	mat.initial_velocity_max = 4.2
+	mat.gravity = Vector3(0.0, 0.85, 0.0)
+	mat.damping_min = 2.0
+	mat.damping_max = 3.5
+	mat.angle_min = -180.0
+	mat.angle_max = 180.0
+	mat.scale_min = 0.85
+	mat.scale_max = 1.45
+	
+	var curve := Curve.new()
+	curve.add_point(Vector2(0.0, 0.35), 0.0, 3.8)
+	curve.add_point(Vector2(0.35, 1.85), 1.2, 1.2)
+	curve.add_point(Vector2(1.0, 3.4), 0.8, 0.0)
+	var curve_tex := CurveTexture.new()
+	curve_tex.curve = curve
+	mat.scale_curve = curve_tex
+
+	var color_grad := Gradient.new()
+	color_grad.offsets = PackedFloat32Array([0.0, 0.15, 0.55, 1.0])
+	color_grad.colors = PackedColorArray([
+		Color(0.95, 0.96, 0.98, 0.88),
+		Color(0.90, 0.92, 0.95, 0.72),
+		Color(0.82, 0.84, 0.88, 0.35),
+		Color(0.75, 0.78, 0.82, 0.0)
+	])
+	var color_tex := GradientTexture1D.new()
+	color_tex.gradient = color_grad
+	mat.color_ramp = color_tex
+	
+	particles.process_material = mat
+	
+	var quad := QuadMesh.new()
+	quad.size = Vector2(1.5, 1.5)
+	
+	var smoke_mat := StandardMaterial3D.new()
+	smoke_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	smoke_mat.vertex_color_use_as_albedo = true
+	smoke_mat.roughness = 0.95
+	smoke_mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	smoke_mat.billboard_keep_scale = true
+	smoke_mat.proximity_fade_enabled = true
+	smoke_mat.proximity_fade_distance = 0.45
+
+	var rad_grad := Gradient.new()
+	rad_grad.offsets = PackedFloat32Array([0.0, 0.28, 0.65, 1.0])
+	rad_grad.colors = PackedColorArray([
+		Color(1.0, 1.0, 1.0, 1.0),
+		Color(1.0, 1.0, 1.0, 0.82),
+		Color(1.0, 1.0, 1.0, 0.22),
+		Color(1.0, 1.0, 1.0, 0.0)
+	])
+	var rad_tex := GradientTexture2D.new()
+	rad_tex.width = 128
+	rad_tex.height = 128
+	rad_tex.fill = GradientTexture2D.FILL_RADIAL
+	rad_tex.fill_from = Vector2(0.5, 0.5)
+	rad_tex.fill_to = Vector2(0.5, 0.0)
+	rad_tex.gradient = rad_grad
+	smoke_mat.albedo_texture = rad_tex
+
+	quad.material = smoke_mat
+	particles.draw_pass_1 = quad
+	
+	return particles
+
+func _emit_hud_info() -> void:
+	var vel_horizontal = Vector3(linear_velocity.x, 0.0, linear_velocity.z)
+	var speed_kph = clampf(vel_horizontal.length() * 3.6, 0.0, max_speed_kmh)
+	
+	var bank_ratio: float = 1.0
+	if not is_drifting:
+		bank_ratio = clampf(1.0 - (straight_driving_timer / combo_bank_time), 0.0, 1.0)
+		
+	var info = {
+		"is_drifting": is_drifting,
+		"is_high_angle": is_high_angle,
+		"drift_angle": drift_angle_deg,
+		"drift_side": drift_side,
+		"speed_kph": speed_kph,
+		"combo_multiplier": combo_multiplier,
+		"unbanked_score": unbanked_score,
+		"total_banked_score": total_banked_score,
+		"bank_ratio": bank_ratio,
+		"straight_driving_timer": straight_driving_timer,
+		"stage_time_left": stage_time_left,
+		"time_left": stage_time_left,
+		"is_stage_running": is_stage_running
+	}
+	drift_updated.emit(info)
+
+# Call _setup_car_horn() inside your car's _ready() function:
+func _setup_car_horn() -> void:
+	var horn_paths: Array[String] = [
+		"res://assets/audio/car_horn.wav",
+		"res://assets/audio/horn.mp3"
+	]
+	
+	var stream: AudioStream = null
+	for path in horn_paths:
+		if ResourceLoader.exists(path):
+			stream = load(path) as AudioStream
+			break
+			
+	horn_audio = AudioStreamPlayer3D.new()
+	horn_audio.name = "HornPlayer"
+	horn_audio.position = Vector3(0.0, 0.6, -1.8)
+	horn_audio.unit_size = 20.0
+	horn_audio.max_distance = 100.0
+	add_child(horn_audio)
+	
+	if stream:
+		horn_audio.stream = stream
+	else:
+		# Fallback: Print note if custom horn file isn't added yet
+		print("NOTE: Drop car_horn.wav into res://assets/audio/ for a custom horn sound.")
+		horn_audio.stream = _create_synthesized_horn_sound()
+
+# Call _check_horn_input(delta) inside your _physics_process(delta) function:
+func _check_horn_input(delta: float) -> void:
+	if horn_cooldown > 0.0:
+		horn_cooldown -= delta
+		return
+		
+	var honked: bool = false
+	if (player_id == 1 or player_id == 0) and (Input.is_key_pressed(KEY_G) or (InputMap.has_action("horn_p1") and Input.is_action_pressed("horn_p1"))):
+		honked = true
+	elif (player_id == 2 or player_id == 0) and (Input.is_key_pressed(KEY_1) or Input.is_key_pressed(KEY_KP_1) or (InputMap.has_action("horn_p2") and Input.is_action_pressed("horn_p2"))):
+		honked = true
+		
+	if honked:
+		horn_cooldown = 0.35 # Prevent audio clipping / spamming
+		if horn_audio and horn_audio.stream:
+			horn_audio.pitch_scale = randf_range(0.95, 1.05) # Slight pitch variation
+			horn_audio.play()
+		else:
+			print("HONK! (P%d)" % player_id)
+
+func _create_synthesized_horn_sound() -> AudioStreamWAV:
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = 22050
+	wav.stereo = false
+	var num_samples := int(22050 * 0.3)
+	var byte_array := PackedByteArray()
+	byte_array.resize(num_samples * 2)
+	for i in range(num_samples):
+		var t := float(i) / 22050.0
+		var env := 1.0
+		if t < 0.02:
+			env = t / 0.02
+		elif t > 0.25:
+			env = (0.3 - t) / 0.05
+		var s := (sin(t * 415.0 * TAU) * 0.5 + sin(t * 520.0 * TAU) * 0.5) * env * 0.85
+		var sample_val := int(clampf(s, -1.0, 1.0) * 32767.0)
+		byte_array.encode_s16(i * 2, sample_val)
+	wav.data = byte_array
+	return wav

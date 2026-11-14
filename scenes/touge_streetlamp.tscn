@@ -1,0 +1,76 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Shader" path="res://shaders/manga_ink.gdshader" id="1_ink"]
+[ext_resource type="Shader" path="res://shaders/manga_outline.gdshader" id="2_outline"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_outline"]
+render_priority = 1
+shader = ExtResource("2_outline")
+shader_parameter/outline_color = Color(0, 0, 0, 1)
+shader_parameter/outline_thickness = 0.02
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_steel_pole"]
+render_priority = 0
+next_pass = SubResource("ShaderMaterial_outline")
+shader = ExtResource("1_ink")
+shader_parameter/albedo_color = Color(0.2, 0.22, 0.25, 1)
+shader_parameter/enable_screentone = false
+shader_parameter/highlight_threshold = 0.65
+shader_parameter/ink_highlight_color = Color(0.8, 0.85, 0.9, 1)
+shader_parameter/ink_shadow_color = Color(0.04, 0.05, 0.06, 1)
+shader_parameter/midtone_threshold = 0.1
+shader_parameter/screentone_angle_deg = 45.0
+shader_parameter/screentone_density = 160.0
+shader_parameter/screentone_dot_size = 0.5
+shader_parameter/shadow_threshold = -0.3
+shader_parameter/specular_size = 0.95
+shader_parameter/specular_strength = 0.5
+shader_parameter/step_softness = 0.02
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_vertical_pole"]
+material = SubResource("ShaderMaterial_steel_pole")
+top_radius = 0.1
+bottom_radius = 0.16
+height = 6.2
+radial_segments = 12
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_horizontal_arm"]
+material = SubResource("ShaderMaterial_steel_pole")
+top_radius = 0.08
+bottom_radius = 0.08
+height = 3.6
+radial_segments = 10
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_lantern_lens"]
+albedo_color = Color(1, 0.92, 0.65, 1)
+emission_enabled = true
+emission = Color(1, 0.9, 0.55, 1)
+emission_energy_multiplier = 3.5
+
+[sub_resource type="BoxMesh" id="BoxMesh_lantern"]
+material = SubResource("StandardMaterial3D_lantern_lens")
+size = Vector3(0.5, 0.18, 0.6)
+
+[node name="TougeStreetlamp" type="Node3D"]
+
+[node name="Pole" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.1, 0)
+mesh = SubResource("CylinderMesh_vertical_pole")
+
+[node name="OverhangArm" type="MeshInstance3D" parent="."]
+transform = Transform3D(-4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0, 1, 1.6, 5.8, 0)
+mesh = SubResource("CylinderMesh_horizontal_arm")
+
+[node name="Lantern" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.2, 5.65, 0)
+mesh = SubResource("BoxMesh_lantern")
+
+[node name="SpotLight3D" type="SpotLight3D" parent="Lantern"]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, -0.1, 0)
+light_color = Color(1, 0.9, 0.65, 1)
+light_energy = 3.5
+shadow_enabled = true
+shadow_bias = 0.03
+spot_range = 28.0
+spot_angle = 46.0
+spot_angle_attenuation = 1.2
