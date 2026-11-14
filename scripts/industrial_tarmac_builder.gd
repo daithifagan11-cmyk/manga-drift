@@ -10,18 +10,7 @@ func _ready() -> void:
 	_build_drift_layout_and_barriers()
 	_spawn_clipping_zones()
 	_spawn_distant_treelines()
-	# _spawn_rain_effects()
 	_place_car_at_grid()
-
-func _spawn_rain_effects() -> void:
-	var rain_path := "res://scenes/rain_emitter.tscn"
-	if not ResourceLoader.exists(rain_path):
-		return
-	var rain_scene = load(rain_path) as PackedScene
-	if rain_scene:
-		var rain = rain_scene.instantiate()
-		rain.name = "RainEmitter"
-		add_child(rain)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel") or (event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE):
@@ -94,16 +83,13 @@ func _build_industrial_compound() -> void:
 	plane.size = Vector2(700, 700)
 	tarmac.mesh = plane
 	
-	var wet_mat := ShaderMaterial.new()
-	wet_mat.shader = load("res://shaders/wet_tarmac.gdshader")
-	wet_mat.set_shader_parameter("albedo_color", Color(0.08, 0.09, 0.12))
-	wet_mat.set_shader_parameter("metallic", 0.45)
-	wet_mat.set_shader_parameter("roughness", 0.55)
-	wet_mat.set_shader_parameter("wetness", 0.95)
-	wet_mat.set_shader_parameter("normal_scale", 4.5)
-	wet_mat.set_shader_parameter("ripple_speed", 1.8)
-	wet_mat.set_shader_parameter("ripple_density", 28.0)
-	tarmac.material_override = wet_mat
+	var tarmac_mat := ShaderMaterial.new()
+	tarmac_mat.shader = load("res://shaders/wet_tarmac.gdshader")
+	tarmac_mat.set_shader_parameter("albedo_color", Color(0.11, 0.12, 0.14))
+	tarmac_mat.set_shader_parameter("metallic", 0.05)
+	tarmac_mat.set_shader_parameter("roughness", 0.85)
+	tarmac_mat.set_shader_parameter("normal_scale", 3.2)
+	tarmac.material_override = tarmac_mat
 	tarmac.position = Vector3(0, -0.2, 0)
 	tarmac.set("use_collision", true) # Make the ground drivable
 	tarmac.create_trimesh_collision()

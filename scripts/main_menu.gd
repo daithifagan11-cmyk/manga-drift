@@ -858,8 +858,14 @@ func _on_loading_complete() -> void:
 	else:
 		push_error("Target scene path not found: " + target_scene_path)
 
+const HOME_REDIRECT_URL: String = "https://daithi.fagans.eu/"
+
 func _on_quit_pressed() -> void:
-	get_tree().quit()
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("try { window.top.location.href = '" + HOME_REDIRECT_URL + "'; } catch (e) { window.location.href = '" + HOME_REDIRECT_URL + "'; }")
+	else:
+		OS.shell_open(HOME_REDIRECT_URL)
+		get_tree().quit()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):

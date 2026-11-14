@@ -13,18 +13,7 @@ func _ready() -> void:
 	_configure_environment()
 	_build_touge_circuit()
 	_build_touge_background_mountain()
-	# _spawn_rain_effects()
 	_place_car_at_grid()
-
-func _spawn_rain_effects() -> void:
-	var rain_path := "res://scenes/rain_emitter.tscn"
-	if not ResourceLoader.exists(rain_path):
-		return
-	var rain_scene = load(rain_path) as PackedScene
-	if rain_scene:
-		var rain = rain_scene.instantiate()
-		rain.name = "RainEmitter"
-		add_child(rain)
 
 func _configure_environment() -> void:
 	_configure_twilight_environment()
@@ -209,17 +198,13 @@ func _extrude_csg(n_name: String, poly: PackedVector2Array, col: Color, rough: f
 	csg.polygon = poly
 	
 	if n_name == "RoadAsphalt":
-		var wet_mat := ShaderMaterial.new()
-		wet_mat.shader = load("res://shaders/wet_tarmac.gdshader")
-		wet_mat.set_shader_parameter("albedo_color", Color(0.08, 0.09, 0.12))
-		wet_mat.set_shader_parameter("metallic", 0.45)
-		wet_mat.set_shader_parameter("roughness", 0.55)
-		wet_mat.set_shader_parameter("wetness", 0.98)
-		wet_mat.set_shader_parameter("normal_scale", 4.8)
-		wet_mat.set_shader_parameter("ripple_speed", 2.2)
-		wet_mat.set_shader_parameter("ripple_density", 28.0)
-		wet_mat.set_shader_parameter("puddle_ratio", 0.45)
-		csg.material = wet_mat
+		var tarmac_mat := ShaderMaterial.new()
+		tarmac_mat.shader = load("res://shaders/wet_tarmac.gdshader")
+		tarmac_mat.set_shader_parameter("albedo_color", Color(0.11, 0.12, 0.14))
+		tarmac_mat.set_shader_parameter("metallic", 0.05)
+		tarmac_mat.set_shader_parameter("roughness", 0.85)
+		tarmac_mat.set_shader_parameter("normal_scale", 3.2)
+		csg.material = tarmac_mat
 	else:
 		var mat := StandardMaterial3D.new()
 		mat.albedo_color = col

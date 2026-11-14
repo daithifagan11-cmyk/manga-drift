@@ -10,7 +10,6 @@ shader_parameter/chromatic_aberration = 0.0035
 shader_parameter/film_grain_intensity = 0.025
 shader_parameter/vignette_intensity = 0.42
 shader_parameter/vignette_opacity = 0.55
-shader_parameter/rain_streaks_intensity = 0.38
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_speed"]
 shader = ExtResource("3_speed")
