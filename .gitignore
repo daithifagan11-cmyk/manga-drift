@@ -6,6 +6,7 @@ build/
 export/
 exports/
 dist/
+.wrangler/
 
 # Exported binaries and web/desktop artifacts
 *.exe

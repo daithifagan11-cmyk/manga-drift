@@ -13,11 +13,14 @@ func _ready() -> void:
 	_configure_environment()
 	_build_touge_circuit()
 	_build_touge_background_mountain()
-	_spawn_rain_effects()
+	# _spawn_rain_effects()
 	_place_car_at_grid()
 
 func _spawn_rain_effects() -> void:
-	var rain_scene = load("res://scenes/rain_emitter.tscn") as PackedScene
+	var rain_path := "res://scenes/rain_emitter.tscn"
+	if not ResourceLoader.exists(rain_path):
+		return
+	var rain_scene = load(rain_path) as PackedScene
 	if rain_scene:
 		var rain = rain_scene.instantiate()
 		rain.name = "RainEmitter"

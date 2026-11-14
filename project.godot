@@ -21,6 +21,7 @@ window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+window/dpi/allow_hidpi=false
 
 [editor_plugins]
 
@@ -84,6 +85,7 @@ rendering_device/driver.windows="d3d12"
 environment/ssao/quality=4
 environment/ssao/half_size=false
 scaling_3d/mode=2
+scaling_3d/scale=0.75
 environment/volumetric_fog/volume_size=128
 environment/volumetric_fog/volume_depth=128
 environment/volumetric_fog/use_filter=true
