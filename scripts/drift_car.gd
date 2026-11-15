@@ -88,6 +88,7 @@ var horn_player: AudioStreamPlayer3D:
 		horn_audio = val
 
 func _ready() -> void:
+	_apply_speed_upgrade()
 	spawn_transform = global_transform
 	mass = 1150.0
 	center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
@@ -505,6 +506,15 @@ func _setup_tire_smoke() -> void:
 				smoke_left = smoke_node
 			else:
 				smoke_right = smoke_node
+
+func _apply_speed_upgrade() -> void:
+	match CarUpgradeManager.speed_tier:
+		0:
+			max_speed_kmh = 60.0
+		1:
+			max_speed_kmh = 70.0
+		_:
+			max_speed_kmh = 80.0
 
 func _setup_visual_lighting() -> void:
 	if taillight_mesh != null:

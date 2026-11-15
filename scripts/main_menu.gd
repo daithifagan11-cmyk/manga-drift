@@ -101,6 +101,11 @@ var _prev_menu_before_mp: Control = null
 # Singleplayer 3rd map card
 var map_industrial_button: Button
 
+# Garage speed upgrade UI
+var upgrade_speed_button: Button
+var upgrade_speed_sub: Label
+var garage_wallet_label: Label
+
 # Colors matching the reference UI specification
 const COLOR_NORMAL_TEXT: Color = Color(0.12, 0.14, 0.18, 1.0) # Dark charcoal
 const COLOR_NORMAL_SUB: Color = Color(0.38, 0.42, 0.48, 1.0)
@@ -294,6 +299,8 @@ func _build_left_tile_ui() -> void:
 		back_to_maps_button.focus_entered.connect(func(): _set_button_highlight(back_to_maps_button, back_to_maps_title, back_to_maps_sub, back_to_maps_icon, true))
 		back_to_maps_button.focus_exited.connect(func(): if not back_to_maps_button.has_focus(): _set_button_highlight(back_to_maps_button, back_to_maps_title, back_to_maps_sub, back_to_maps_icon, false))
 		_set_button_highlight(back_to_maps_button, back_to_maps_title, back_to_maps_sub, back_to_maps_icon, false)
+
+	_build_garage_upgrade_ui()
 
 	# Initial overlay state
 	if maps_container != null:
@@ -703,6 +710,95 @@ func _build_multiplayer_ui() -> void:
 	var menu_canvas := $MenuCanvas
 	menu_canvas.add_child(multiplayer_container)
 
+func _build_garage_upgrade_ui() -> void:
+	var menu_canvas := get_node_or_null("MenuCanvas")
+	if menu_canvas != null and garage_wallet_label == null:
+		garage_wallet_label = Label.new()
+		garage_wallet_label.name = "GarageWalletLabel"
+		garage_wallet_label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+		garage_wallet_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		garage_wallet_label.offset_left = -460.0
+		garage_wallet_label.offset_top = 26.0
+		garage_wallet_label.offset_right = -36.0
+		garage_wallet_label.offset_bottom = 66.0
+		garage_wallet_label.add_theme_font_size_override("font_size", 22)
+		garage_wallet_label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.14))
+		garage_wallet_label.add_theme_color_override("font_outline_color", Color.BLACK)
+		garage_wallet_label.add_theme_constant_override("outline_size", 8)
+		menu_canvas.add_child(garage_wallet_label)
+
+	var car_vbox := get_node_or_null("MenuCanvas/CarSelectContainer/VBox") as VBoxContainer
+	if car_vbox != null:
+		if car_select_panel != null:
+			car_select_panel.offset_top = -295.0
+			car_select_panel.offset_bottom = 295.0
+		car_vbox.add_theme_constant_override("separation", 8)
+
+		var bolt_svg := """<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+			<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+		</svg>"""
+		var bolt_img := Image.new()
+		var bolt_tex: Texture2D = null
+		if bolt_img.load_svg_from_string(bolt_svg, 1.0) == OK:
+			bolt_tex = ImageTexture.create_from_image(bolt_img)
+
+		var upg_card := _create_custom_card_button("UPGRADE SPEED ($50 / $100)", "", bolt_tex, Vector2(380, 74))
+		upgrade_speed_button = upg_card.button
+		upgrade_speed_button.name = "UpgradeSpeedButton"
+		upgrade_speed_sub = upg_card.sub
+		car_vbox.add_child(upgrade_speed_button)
+		var start_idx := start_drift_button.get_index() if start_drift_button != null else car_vbox.get_child_count() - 1
+		car_vbox.move_child(upgrade_speed_button, start_idx)
+		upgrade_speed_button.pressed.connect(_on_upgrade_speed_pressed)
+
+		if car_s15_button != null and start_drift_button != null:
+			car_s15_button.focus_neighbor_bottom = car_s15_button.get_path_to(upgrade_speed_button)
+			upgrade_speed_button.focus_neighbor_top = upgrade_speed_button.get_path_to(car_s15_button)
+			upgrade_speed_button.focus_neighbor_bottom = upgrade_speed_button.get_path_to(start_drift_button)
+			start_drift_button.focus_neighbor_top = start_drift_button.get_path_to(upgrade_speed_button)
+
+	if not CoinManager.money_changed.is_connected(_on_wallet_or_upgrade_changed):
+		CoinManager.money_changed.connect(_on_wallet_or_upgrade_changed)
+	if not CarUpgradeManager.speed_upgraded.is_connected(_on_speed_upgraded):
+		CarUpgradeManager.speed_upgraded.connect(_on_speed_upgraded)
+	_refresh_upgrade_ui()
+
+func _exit_tree() -> void:
+	if CoinManager.money_changed.is_connected(_on_wallet_or_upgrade_changed):
+		CoinManager.money_changed.disconnect(_on_wallet_or_upgrade_changed)
+	if CarUpgradeManager.speed_upgraded.is_connected(_on_speed_upgraded):
+		CarUpgradeManager.speed_upgraded.disconnect(_on_speed_upgraded)
+
+func _on_wallet_or_upgrade_changed(_new_val: int) -> void:
+	_refresh_upgrade_ui()
+
+func _on_speed_upgraded(_new_tier: int, _new_speed: float) -> void:
+	_refresh_upgrade_ui()
+
+func _on_upgrade_speed_pressed() -> void:
+	if _is_transitioning:
+		return
+	var upgraded: bool = CarUpgradeManager.try_buy_speed_upgrade()
+	if not upgraded and upgrade_speed_sub != null and not CarUpgradeManager.is_max_speed_tier():
+		var needed: int = CarUpgradeManager.get_next_upgrade_cost()
+		upgrade_speed_sub.text = "NEED $%d COINS (HAVE $%d)" % [needed, CoinManager.player_money]
+	else:
+		_refresh_upgrade_ui()
+
+func _refresh_upgrade_ui() -> void:
+	var tier: int = CarUpgradeManager.speed_tier
+	var cur_speed: int = int(CarUpgradeManager.get_max_speed_kmh())
+	var cash: int = CoinManager.player_money
+	if garage_wallet_label != null:
+		garage_wallet_label.text = "CASH: $%d  //  TOP SPEED: %d KM/H (T%d)" % [cash, cur_speed, tier]
+	if upgrade_speed_sub != null:
+		if CarUpgradeManager.is_max_speed_tier():
+			upgrade_speed_sub.text = "TIER %d // %d KM/H [MAXED OUT]" % [tier, cur_speed]
+		else:
+			var next_cost: int = CarUpgradeManager.get_next_upgrade_cost()
+			var next_speed: int = int(CarUpgradeManager.SPEED_TIERS_KMH[tier + 1])
+			upgrade_speed_sub.text = "TIER %d: %d -> %d KM/H // COST: $%d (CASH: $%d)" % [tier, cur_speed, next_speed, next_cost, cash]
+
 func _create_custom_card_button(title_text: String, sub_text: String, icon_tex: Texture2D, min_size: Vector2) -> Dictionary:
 	var btn := Button.new()
 	btn.custom_minimum_size = min_size
@@ -820,6 +916,7 @@ func _on_play_pressed() -> void:
 	if car_ae86_button != null: car_ae86_button.disabled = true
 	if car_rx7_button != null: car_rx7_button.disabled = true
 	if car_s15_button != null: car_s15_button.disabled = true
+	if upgrade_speed_button != null: upgrade_speed_button.disabled = true
 	if start_drift_button != null: start_drift_button.disabled = true
 	if back_to_maps_button != null: back_to_maps_button.disabled = true
 	
