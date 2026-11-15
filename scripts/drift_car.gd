@@ -89,10 +89,7 @@ const SKID_MAX_MARKS: int = 800
 var _skid_pool: MultiMeshInstance3D
 var _skid_write_idx: int = 0
 var _skid_active_count: int = 0
-var _prev_skid_pos_l: Vector3 = Vector3.ZERO
-var _prev_skid_pos_r: Vector3 = Vector3.ZERO
-var _has_prev_skid_l: bool = false
-var _has_prev_skid_r: bool = false
+var _wheel_skid_state: Dictionary = {}
 
 # Horn audio player & cooldown
 var horn_audio: AudioStreamPlayer3D
@@ -717,10 +714,6 @@ func _ensure_skid_pool() -> MultiMeshInstance3D:
 	var host: Node = get_parent()
 	if host == null:
 		return null
-	var existing := host.get_node_or_null("SkidMarksPool") as MultiMeshInstance3D
-	if existing != null:
-		_skid_pool = existing
-		return _skid_pool
 
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(0.28, 1.0)
@@ -728,7 +721,6 @@ func _ensure_skid_pool() -> MultiMeshInstance3D:
 	mat.albedo_color = Color(0.03, 0.03, 0.035, 0.78)
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.no_depth_test = false
 	plane.material = mat
 
 	var mm := MultiMesh.new()
@@ -738,7 +730,7 @@ func _ensure_skid_pool() -> MultiMeshInstance3D:
 	mm.mesh = plane
 
 	_skid_pool = MultiMeshInstance3D.new()
-	_skid_pool.name = "SkidMarksPool"
+	_skid_pool.name = "SkidMarksPool_%d" % get_instance_id()
 	_skid_pool.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_skid_pool.multimesh = mm
 	host.add_child(_skid_pool)
@@ -746,45 +738,36 @@ func _ensure_skid_pool() -> MultiMeshInstance3D:
 
 func _update_tire_skid_marks(should_leave_marks: bool) -> void:
 	if not should_leave_marks:
-		_has_prev_skid_l = false
-		_has_prev_skid_r = false
+		_wheel_skid_state.clear()
 		return
 
 	var space_state := get_world_3d().direct_space_state if get_world_3d() != null else null
 	if space_state == null:
 		return
 
-	if wheel_rl != null:
-		var hit_l := _raycast_wheel_ground(space_state, wheel_rl)
-		if not hit_l.is_empty():
-			var pos_l: Vector3 = hit_l["position"]
-			var norm_l: Vector3 = hit_l["normal"]
-			if _has_prev_skid_l:
-				var seg_len_l := _prev_skid_pos_l.distance_to(pos_l)
-				if seg_len_l >= 0.35 and seg_len_l <= 4.0:
-					_stamp_skid_segment(_prev_skid_pos_l, pos_l, norm_l)
-					_prev_skid_pos_l = pos_l
-			else:
-				_prev_skid_pos_l = pos_l
-				_has_prev_skid_l = true
-		else:
-			_has_prev_skid_l = false
+	for wheel in [wheel_rl, wheel_rr]:
+		_process_wheel_skid(space_state, wheel)
 
-	if wheel_rr != null:
-		var hit_r := _raycast_wheel_ground(space_state, wheel_rr)
-		if not hit_r.is_empty():
-			var pos_r: Vector3 = hit_r["position"]
-			var norm_r: Vector3 = hit_r["normal"]
-			if _has_prev_skid_r:
-				var seg_len_r := _prev_skid_pos_r.distance_to(pos_r)
-				if seg_len_r >= 0.35 and seg_len_r <= 4.0:
-					_stamp_skid_segment(_prev_skid_pos_r, pos_r, norm_r)
-					_prev_skid_pos_r = pos_r
-			else:
-				_prev_skid_pos_r = pos_r
-				_has_prev_skid_r = true
-		else:
-			_has_prev_skid_r = false
+func _process_wheel_skid(space_state: PhysicsDirectSpaceState3D, wheel: VehicleWheel3D) -> void:
+	if wheel == null:
+		return
+	var wid: int = wheel.get_instance_id()
+	var hit := _raycast_wheel_ground(space_state, wheel)
+	if hit.is_empty():
+		_wheel_skid_state.erase(wid)
+		return
+
+	var pos: Vector3 = hit["position"]
+	if _wheel_skid_state.has(wid):
+		var prev_pos: Vector3 = _wheel_skid_state[wid]
+		var seg_len: float = prev_pos.distance_to(pos)
+		if seg_len >= 0.35 and seg_len <= 4.0:
+			_stamp_skid_segment(prev_pos, pos, hit["normal"])
+			_wheel_skid_state[wid] = pos
+		elif seg_len > 4.0:
+			_wheel_skid_state[wid] = pos
+	else:
+		_wheel_skid_state[wid] = pos
 
 func _raycast_wheel_ground(space_state: PhysicsDirectSpaceState3D, wheel: VehicleWheel3D) -> Dictionary:
 	var from: Vector3 = wheel.global_position + Vector3.UP * 0.25
