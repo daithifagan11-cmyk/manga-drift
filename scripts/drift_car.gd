@@ -77,6 +77,9 @@ var handbrake: bool = false
 var _taillight_mat: StandardMaterial3D
 var _prev_throttle_input: float = 0.0
 var _slip_speed: float = 0.0
+var turbo_flutter_player: AudioStreamPlayer3D
+var _had_hard_throttle: bool = false
+var _turbo_flutter_cooldown: float = 0.0
 
 # Horn audio player & cooldown
 var horn_audio: AudioStreamPlayer3D
@@ -104,6 +107,7 @@ func _ready() -> void:
 	stage_time_left = stage_duration
 	_setup_tire_smoke()
 	_setup_car_horn()
+	_setup_turbo_flutter()
 	_setup_visual_lighting()
 	_setup_enhanced_car_visuals()
 	neon_underglow = get_node_or_null("NeonUnderglow")
@@ -336,6 +340,9 @@ func _physics_process(delta: float) -> void:
 		var target_omni_energy: float = 4.2 if is_braking else 0.8
 		brake_light_omni.light_energy = lerpf(brake_light_omni.light_energy, target_omni_energy, delta * 15.0)
 
+	# Turbo flutter / compressor surge audio on hard throttle lift-off
+	_check_turbo_flutter(delta)
+
 	# Exhaust flame & backfire flash on sharp throttle cut or high-speed handbrake entry
 	if _prev_throttle_input > 0.65 and throttle_input <= 0.08 and current_speed_kmh > 26.0:
 		_trigger_exhaust_backfire()
@@ -508,13 +515,85 @@ func _setup_tire_smoke() -> void:
 				smoke_right = smoke_node
 
 func _apply_speed_upgrade() -> void:
+	var base_speed_kmh: float = 60.0
 	match CarUpgradeManager.speed_tier:
 		0:
-			max_speed_kmh = 60.0
+			base_speed_kmh = 60.0
 		1:
-			max_speed_kmh = 70.0
+			base_speed_kmh = 70.0
 		_:
-			max_speed_kmh = 80.0
+			base_speed_kmh = 80.0
+	max_speed_kmh = base_speed_kmh + TurboUpgradeManager.get_speed_boost_kmh()
+
+func _setup_turbo_flutter() -> void:
+	var flutter_paths: Array[String] = [
+		"res://assets/audio/turbo_flutter.wav",
+		"res://assets/audio/turbo_flutter.mp3"
+	]
+	var stream: AudioStream = null
+	for path in flutter_paths:
+		if ResourceLoader.exists(path):
+			stream = load(path) as AudioStream
+			break
+
+	turbo_flutter_player = AudioStreamPlayer3D.new()
+	turbo_flutter_player.name = "TurboFlutterPlayer"
+	turbo_flutter_player.position = Vector3(0.0, 0.55, -1.4) # Engine bay mount
+	turbo_flutter_player.unit_size = 18.0
+	turbo_flutter_player.max_distance = 90.0
+	add_child(turbo_flutter_player)
+
+	turbo_flutter_player.stream = stream if stream != null else _create_synthesized_turbo_flutter_sound()
+
+func _check_turbo_flutter(delta: float) -> void:
+	if _turbo_flutter_cooldown > 0.0:
+		_turbo_flutter_cooldown = maxf(0.0, _turbo_flutter_cooldown - delta)
+
+	if throttle_input > 0.8:
+		_had_hard_throttle = true
+	elif (_had_hard_throttle or _prev_throttle_input > 0.8) and throttle_input <= 0.0:
+		_had_hard_throttle = false
+		if TurboUpgradeManager.turbo_stage > 0 and _turbo_flutter_cooldown <= 0.0:
+			_turbo_flutter_cooldown = 0.35
+			if turbo_flutter_player != null and turbo_flutter_player.stream != null:
+				var stage_pitch: float = 1.12 - float(TurboUpgradeManager.turbo_stage - 1) * 0.13
+				turbo_flutter_player.pitch_scale = stage_pitch * randf_range(0.97, 1.03)
+				turbo_flutter_player.volume_db = -3.0 + float(TurboUpgradeManager.turbo_stage) * 1.2
+				turbo_flutter_player.play()
+	elif throttle_input < 0.8:
+		_had_hard_throttle = false
+
+func _create_synthesized_turbo_flutter_sound() -> AudioStreamWAV:
+	var sample_rate: int = 22050
+	var duration: float = 0.56
+	var num_samples: int = int(sample_rate * duration)
+	var byte_array := PackedByteArray()
+	byte_array.resize(num_samples * 2)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4286
+
+	# 4-pulse compressor surge ("stut-stut-stut-stut") with turbo whistle + air chop
+	for i in range(num_samples):
+		var t: float = float(i) / float(sample_rate)
+		var overall_decay: float = exp(-t * 3.8)
+		var pulse_rate: float = 8.5 - t * 2.2
+		var pulse_phase: float = fmod(t * pulse_rate, 1.0)
+		var pulse_env: float = sin(pulse_phase * PI)
+		pulse_env = pulse_env * pulse_env * exp(-pulse_phase * 2.4)
+
+		var whistle_freq: float = lerpf(2450.0, 1450.0, t / duration)
+		var whistle: float = sin(t * whistle_freq * TAU) * 0.35 + sin(t * whistle_freq * 0.5 * TAU) * 0.25
+		var surge_air: float = rng.randf_range(-1.0, 1.0) * 0.45
+		var s: float = (whistle + surge_air) * pulse_env * overall_decay * 0.9
+		var sample_val: int = int(clampf(s, -1.0, 1.0) * 32767.0)
+		byte_array.encode_s16(i * 2, sample_val)
+
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = sample_rate
+	wav.stereo = false
+	wav.data = byte_array
+	return wav
 
 func _setup_visual_lighting() -> void:
 	if taillight_mesh != null:

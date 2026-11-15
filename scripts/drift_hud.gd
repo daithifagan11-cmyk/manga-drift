@@ -113,10 +113,10 @@ func _process(delta: float) -> void:
 		_speed_lines_mat.set_shader_parameter("intensity", _current_intensity)
 		_speed_lines_mat.set_shader_parameter("center_offset", _current_offset)
 
-	# Update bottom-right speedometer every frame directly from car (0 to 100 KM/H)
+	# Update bottom-right speedometer every frame directly from car
 	if car != null and speedometer_label != null:
 		var spd: float = car.current_speed_kmh
-		speedometer_label.text = "%d KM/H" % clampi(int(round(spd)), 0, 100)
+		speedometer_label.text = "%d KM/H" % clampi(int(round(spd)), 0, 150)
 
 	if car == null:
 		time_left -= delta
@@ -328,9 +328,9 @@ func _on_drift_updated(info: Dictionary) -> void:
 	# 7. 120-second Stage Countdown Timer
 	_update_timer_display()
 			
-	# 8. Speedometer (displays 0 KM/H up to 100 KM/H)
+	# 8. Speedometer
 	if speedometer_label != null:
-		var display_spd: int = clampi(int(round(speed)), 0, 100)
+		var display_spd: int = clampi(int(round(speed)), 0, 150)
 		speedometer_label.text = "%d KM/H" % display_spd
 		
 	# 9. Speed lines: visible around screen edges when speed exceeds 65 KM/H or during active drifts

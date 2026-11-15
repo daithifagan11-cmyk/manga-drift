@@ -101,9 +101,11 @@ var _prev_menu_before_mp: Control = null
 # Singleplayer 3rd map card
 var map_industrial_button: Button
 
-# Garage speed upgrade UI
+# Garage speed & turbo upgrade UI
 var upgrade_speed_button: Button
 var upgrade_speed_sub: Label
+var upgrade_turbo_button: Button
+var upgrade_turbo_sub: Label
 var garage_wallet_label: Label
 
 # Colors matching the reference UI specification
@@ -730,9 +732,12 @@ func _build_garage_upgrade_ui() -> void:
 	var car_vbox := get_node_or_null("MenuCanvas/CarSelectContainer/VBox") as VBoxContainer
 	if car_vbox != null:
 		if car_select_panel != null:
-			car_select_panel.offset_top = -295.0
-			car_select_panel.offset_bottom = 295.0
-		car_vbox.add_theme_constant_override("separation", 8)
+			car_select_panel.offset_top = -318.0
+			car_select_panel.offset_bottom = 318.0
+		car_vbox.add_theme_constant_override("separation", 6)
+		for b in [car_ae86_button, car_rx7_button, car_s15_button, start_drift_button, back_to_maps_button]:
+			if b != null:
+				b.custom_minimum_size = Vector2(380, 68)
 
 		var bolt_svg := """<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
 			<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
@@ -742,7 +747,17 @@ func _build_garage_upgrade_ui() -> void:
 		if bolt_img.load_svg_from_string(bolt_svg, 1.0) == OK:
 			bolt_tex = ImageTexture.create_from_image(bolt_img)
 
-		var upg_card := _create_custom_card_button("UPGRADE SPEED ($50 / $100)", "", bolt_tex, Vector2(380, 74))
+		var turbo_svg := """<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+			<circle cx="11" cy="13" r="7"/>
+			<circle cx="11" cy="13" r="2.5"/>
+			<path d="M11 6h10v4h-4"/>
+		</svg>"""
+		var turbo_img := Image.new()
+		var turbo_tex: Texture2D = bolt_tex
+		if turbo_img.load_svg_from_string(turbo_svg, 1.0) == OK:
+			turbo_tex = ImageTexture.create_from_image(turbo_img)
+
+		var upg_card := _create_custom_card_button("UPGRADE SPEED ($50 / $100)", "", bolt_tex, Vector2(380, 68))
 		upgrade_speed_button = upg_card.button
 		upgrade_speed_button.name = "UpgradeSpeedButton"
 		upgrade_speed_sub = upg_card.sub
@@ -751,16 +766,28 @@ func _build_garage_upgrade_ui() -> void:
 		car_vbox.move_child(upgrade_speed_button, start_idx)
 		upgrade_speed_button.pressed.connect(_on_upgrade_speed_pressed)
 
+		var turbo_card := _create_custom_card_button("UPGRADE TURBO ($60 / $120 / $250)", "", turbo_tex, Vector2(380, 68))
+		upgrade_turbo_button = turbo_card.button
+		upgrade_turbo_button.name = "UpgradeTurboButton"
+		upgrade_turbo_sub = turbo_card.sub
+		car_vbox.add_child(upgrade_turbo_button)
+		car_vbox.move_child(upgrade_turbo_button, upgrade_speed_button.get_index() + 1)
+		upgrade_turbo_button.pressed.connect(_on_upgrade_turbo_pressed)
+
 		if car_s15_button != null and start_drift_button != null:
 			car_s15_button.focus_neighbor_bottom = car_s15_button.get_path_to(upgrade_speed_button)
 			upgrade_speed_button.focus_neighbor_top = upgrade_speed_button.get_path_to(car_s15_button)
-			upgrade_speed_button.focus_neighbor_bottom = upgrade_speed_button.get_path_to(start_drift_button)
-			start_drift_button.focus_neighbor_top = start_drift_button.get_path_to(upgrade_speed_button)
+			upgrade_speed_button.focus_neighbor_bottom = upgrade_speed_button.get_path_to(upgrade_turbo_button)
+			upgrade_turbo_button.focus_neighbor_top = upgrade_turbo_button.get_path_to(upgrade_speed_button)
+			upgrade_turbo_button.focus_neighbor_bottom = upgrade_turbo_button.get_path_to(start_drift_button)
+			start_drift_button.focus_neighbor_top = start_drift_button.get_path_to(upgrade_turbo_button)
 
 	if not CoinManager.money_changed.is_connected(_on_wallet_or_upgrade_changed):
 		CoinManager.money_changed.connect(_on_wallet_or_upgrade_changed)
 	if not CarUpgradeManager.speed_upgraded.is_connected(_on_speed_upgraded):
 		CarUpgradeManager.speed_upgraded.connect(_on_speed_upgraded)
+	if not TurboUpgradeManager.turbo_upgraded.is_connected(_on_turbo_upgraded):
+		TurboUpgradeManager.turbo_upgraded.connect(_on_turbo_upgraded)
 	_refresh_upgrade_ui()
 
 func _exit_tree() -> void:
@@ -768,11 +795,16 @@ func _exit_tree() -> void:
 		CoinManager.money_changed.disconnect(_on_wallet_or_upgrade_changed)
 	if CarUpgradeManager.speed_upgraded.is_connected(_on_speed_upgraded):
 		CarUpgradeManager.speed_upgraded.disconnect(_on_speed_upgraded)
+	if TurboUpgradeManager.turbo_upgraded.is_connected(_on_turbo_upgraded):
+		TurboUpgradeManager.turbo_upgraded.disconnect(_on_turbo_upgraded)
 
 func _on_wallet_or_upgrade_changed(_new_val: int) -> void:
 	_refresh_upgrade_ui()
 
 func _on_speed_upgraded(_new_tier: int, _new_speed: float) -> void:
+	_refresh_upgrade_ui()
+
+func _on_turbo_upgraded(_new_stage: int, _boost_kmh: float) -> void:
 	_refresh_upgrade_ui()
 
 func _on_upgrade_speed_pressed() -> void:
@@ -785,19 +817,40 @@ func _on_upgrade_speed_pressed() -> void:
 	else:
 		_refresh_upgrade_ui()
 
+func _on_upgrade_turbo_pressed() -> void:
+	if _is_transitioning:
+		return
+	var upgraded: bool = TurboUpgradeManager.try_buy_turbo_upgrade()
+	if not upgraded and upgrade_turbo_sub != null and not TurboUpgradeManager.is_max_turbo_stage():
+		var needed: int = TurboUpgradeManager.get_next_upgrade_cost()
+		upgrade_turbo_sub.text = "NEED $%d COINS (HAVE $%d)" % [needed, CoinManager.player_money]
+	else:
+		_refresh_upgrade_ui()
+
 func _refresh_upgrade_ui() -> void:
 	var tier: int = CarUpgradeManager.speed_tier
-	var cur_speed: int = int(CarUpgradeManager.get_max_speed_kmh())
+	var base_speed: int = int(CarUpgradeManager.get_max_speed_kmh())
+	var turbo_stage: int = TurboUpgradeManager.turbo_stage
+	var turbo_boost: int = int(TurboUpgradeManager.get_speed_boost_kmh())
+	var total_speed: int = base_speed + turbo_boost
 	var cash: int = CoinManager.player_money
 	if garage_wallet_label != null:
-		garage_wallet_label.text = "CASH: $%d  //  TOP SPEED: %d KM/H (T%d)" % [cash, cur_speed, tier]
+		garage_wallet_label.text = "CASH: $%d  //  MAX SPEED: %d KM/H (T%d + S%d)" % [cash, total_speed, tier, turbo_stage]
 	if upgrade_speed_sub != null:
 		if CarUpgradeManager.is_max_speed_tier():
-			upgrade_speed_sub.text = "TIER %d // %d KM/H [MAXED OUT]" % [tier, cur_speed]
+			upgrade_speed_sub.text = "TIER %d // %d KM/H BASE [MAXED OUT]" % [tier, base_speed]
 		else:
 			var next_cost: int = CarUpgradeManager.get_next_upgrade_cost()
 			var next_speed: int = int(CarUpgradeManager.SPEED_TIERS_KMH[tier + 1])
-			upgrade_speed_sub.text = "TIER %d: %d -> %d KM/H // COST: $%d (CASH: $%d)" % [tier, cur_speed, next_speed, next_cost, cash]
+			upgrade_speed_sub.text = "TIER %d: %d -> %d KM/H // COST: $%d (CASH: $%d)" % [tier, base_speed, next_speed, next_cost, cash]
+	if upgrade_turbo_sub != null:
+		if TurboUpgradeManager.is_max_turbo_stage():
+			upgrade_turbo_sub.text = "%s (+%d KM/H) [MAXED OUT]" % [TurboUpgradeManager.get_stage_name(), turbo_boost]
+		else:
+			var next_turbo_cost: int = TurboUpgradeManager.get_next_upgrade_cost()
+			var next_boost: int = int(TurboUpgradeManager.TURBO_BOOST_KMH[turbo_stage + 1])
+			var next_name: String = TurboUpgradeManager.get_stage_name(turbo_stage + 1)
+			upgrade_turbo_sub.text = "%s (+%d KM/H) // COST: $%d (CASH: $%d)" % [next_name, next_boost, next_turbo_cost, cash]
 
 func _create_custom_card_button(title_text: String, sub_text: String, icon_tex: Texture2D, min_size: Vector2) -> Dictionary:
 	var btn := Button.new()
@@ -917,6 +970,7 @@ func _on_play_pressed() -> void:
 	if car_rx7_button != null: car_rx7_button.disabled = true
 	if car_s15_button != null: car_s15_button.disabled = true
 	if upgrade_speed_button != null: upgrade_speed_button.disabled = true
+	if upgrade_turbo_button != null: upgrade_turbo_button.disabled = true
 	if start_drift_button != null: start_drift_button.disabled = true
 	if back_to_maps_button != null: back_to_maps_button.disabled = true
 	

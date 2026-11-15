@@ -19,6 +19,7 @@ config/icon="res://icon.svg"
 
 CoinManager="*res://scripts/coin_manager.gd"
 CarUpgradeManager="*res://scripts/car_upgrade_manager.gd"
+TurboUpgradeManager="*res://scripts/turbo_upgrade_manager.gd"
 
 [display]
 
