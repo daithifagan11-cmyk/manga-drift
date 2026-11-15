@@ -81,6 +81,19 @@ var turbo_flutter_player: AudioStreamPlayer3D
 var _had_hard_throttle: bool = false
 var _turbo_flutter_cooldown: float = 0.0
 
+var exhaust_pop_player: AudioStreamPlayer3D
+var _backfire_cooldown: float = 0.0
+var _last_gear_band: int = 0
+
+const SKID_MAX_MARKS: int = 800
+var _skid_pool: MultiMeshInstance3D
+var _skid_write_idx: int = 0
+var _skid_active_count: int = 0
+var _prev_skid_pos_l: Vector3 = Vector3.ZERO
+var _prev_skid_pos_r: Vector3 = Vector3.ZERO
+var _has_prev_skid_l: bool = false
+var _has_prev_skid_r: bool = false
+
 # Horn audio player & cooldown
 var horn_audio: AudioStreamPlayer3D
 var horn_cooldown: float = 0.0
@@ -108,6 +121,7 @@ func _ready() -> void:
 	_setup_tire_smoke()
 	_setup_car_horn()
 	_setup_turbo_flutter()
+	_setup_exhaust_pop_audio()
 	_setup_visual_lighting()
 	_setup_enhanced_car_visuals()
 	neon_underglow = get_node_or_null("NeonUnderglow")
@@ -308,7 +322,7 @@ func _physics_process(delta: float) -> void:
 	is_drifting = current_speed_kmh > 18.0 and drift_angle_deg > 10.0
 	is_high_angle = is_drifting and (drift_angle_deg >= 25.0)
 
-	# Update rear tire smoke emission dynamically based on tire slip velocity (slip_speed > 3.0)
+	# Update rear tire smoke & raycasted skid marks whenever tires lose traction (slip_speed > 2.5) or handbrake pulled
 	var forward_speed: float = forward_dir.dot(linear_velocity)
 	_slip_speed = abs(sideways_speed)
 	if handbrake:
@@ -316,9 +330,9 @@ func _physics_process(delta: float) -> void:
 	elif is_drifting:
 		_slip_speed = maxf(_slip_speed, (drift_angle_deg / 12.0) * (current_speed_kmh * 0.18))
 
-	var should_emit_smoke: bool = _slip_speed > 3.0
+	var should_emit_smoke: bool = _slip_speed > 2.5
 	if should_emit_smoke:
-		var smoke_ratio: float = clampf((_slip_speed - 3.0) / 10.0, 0.25, 1.0)
+		var smoke_ratio: float = clampf((_slip_speed - 2.5) / 9.0, 0.32, 1.0)
 		if smoke_left != null:
 			smoke_left.emitting = true
 			smoke_left.amount_ratio = smoke_ratio
@@ -330,6 +344,8 @@ func _physics_process(delta: float) -> void:
 			smoke_left.emitting = false
 		if smoke_right != null and smoke_right.emitting:
 			smoke_right.emitting = false
+
+	_update_tire_skid_marks(should_emit_smoke or (handbrake and current_speed_kmh > 6.0))
 
 	# Dynamic glowing brake lights (high-intensity red bloom when braking)
 	var is_braking: bool = (brake > 5.0 or handbrake or (throttle_input < -0.1 and current_speed_kmh > 3.0))
@@ -343,8 +359,15 @@ func _physics_process(delta: float) -> void:
 	# Turbo flutter / compressor surge audio on hard throttle lift-off
 	_check_turbo_flutter(delta)
 
-	# Exhaust flame & backfire flash on sharp throttle cut or high-speed handbrake entry
-	if _prev_throttle_input > 0.65 and throttle_input <= 0.08 and current_speed_kmh > 26.0:
+	# Exhaust flame & pop/bang audio on sudden throttle cut, high-RPM upshift, or high-speed handbrake pull
+	if _backfire_cooldown > 0.0:
+		_backfire_cooldown = maxf(0.0, _backfire_cooldown - delta)
+	var cur_gear_band: int = int(current_speed_kmh / 20.0)
+	var upshifted_at_high_rpm: bool = cur_gear_band > _last_gear_band and throttle_input > 0.7 and current_speed_kmh >= 36.0
+	_last_gear_band = cur_gear_band
+	if _prev_throttle_input > 0.65 and throttle_input <= 0.08 and current_speed_kmh > 20.0:
+		_trigger_exhaust_backfire()
+	elif upshifted_at_high_rpm:
 		_trigger_exhaust_backfire()
 	elif handbrake and current_speed_kmh > 42.0 and _prev_throttle_input > 0.45:
 		_trigger_exhaust_backfire()
@@ -627,14 +650,171 @@ func _setup_enhanced_car_visuals() -> void:
 	add_child(underglow)
 
 func _trigger_exhaust_backfire() -> void:
+	if _backfire_cooldown > 0.0:
+		return
+	_backfire_cooldown = 0.22
 	if exhaust_flame != null:
 		exhaust_flame.restart()
 		exhaust_flame.emitting = true
 	if exhaust_flash != null:
 		exhaust_flash.light_energy = 5.5
+	if exhaust_pop_player != null and exhaust_pop_player.stream != null:
+		exhaust_pop_player.pitch_scale = randf_range(0.88, 1.16)
+		exhaust_pop_player.play()
 	var cam = get_node_or_null("CameraPivot")
 	if cam != null and cam.has_method("trigger_shake"):
 		cam.trigger_shake(0.18)
+
+func _setup_exhaust_pop_audio() -> void:
+	var pop_paths: Array[String] = [
+		"res://assets/audio/exhaust_pop.wav",
+		"res://assets/audio/exhaust_pop.mp3"
+	]
+	var stream: AudioStream = null
+	for path in pop_paths:
+		if ResourceLoader.exists(path):
+			stream = load(path) as AudioStream
+			break
+
+	exhaust_pop_player = AudioStreamPlayer3D.new()
+	exhaust_pop_player.name = "ExhaustPopPlayer"
+	exhaust_pop_player.position = Vector3(-0.54, 0.32, 2.05) # Mounted at rear exhaust tip
+	exhaust_pop_player.unit_size = 20.0
+	exhaust_pop_player.max_distance = 100.0
+	exhaust_pop_player.volume_db = 1.5
+	add_child(exhaust_pop_player)
+	exhaust_pop_player.stream = stream if stream != null else _create_synthesized_exhaust_pop_sound()
+
+func _create_synthesized_exhaust_pop_sound() -> AudioStreamWAV:
+	var sample_rate: int = 22050
+	var duration: float = 0.28
+	var num_samples: int = int(sample_rate * duration)
+	var byte_array := PackedByteArray()
+	byte_array.resize(num_samples * 2)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 9091
+
+	# Sharp transient crack + deep exhaust thump (double pop-bang feel)
+	for i in range(num_samples):
+		var t: float = float(i) / float(sample_rate)
+		var main_crack: float = exp(-t * 34.0) * (rng.randf_range(-1.0, 1.0) * 0.75 + sin(t * 115.0 * TAU) * 0.45)
+		var echo_t: float = maxf(0.0, t - 0.085)
+		var echo_pop: float = (exp(-echo_t * 42.0) * (rng.randf_range(-1.0, 1.0) * 0.55 + sin(echo_t * 130.0 * TAU) * 0.3)) if t >= 0.085 else 0.0
+		var s: float = (main_crack + echo_pop * 0.65) * 0.95
+		var sample_val: int = int(clampf(s, -1.0, 1.0) * 32767.0)
+		byte_array.encode_s16(i * 2, sample_val)
+
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = sample_rate
+	wav.stereo = false
+	wav.data = byte_array
+	return wav
+
+func _ensure_skid_pool() -> MultiMeshInstance3D:
+	if _skid_pool != null and is_instance_valid(_skid_pool):
+		return _skid_pool
+	var host: Node = get_parent()
+	if host == null:
+		return null
+	var existing := host.get_node_or_null("SkidMarksPool") as MultiMeshInstance3D
+	if existing != null:
+		_skid_pool = existing
+		return _skid_pool
+
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(0.28, 1.0)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.03, 0.03, 0.035, 0.78)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.no_depth_test = false
+	plane.material = mat
+
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.instance_count = SKID_MAX_MARKS
+	mm.visible_instance_count = 0
+	mm.mesh = plane
+
+	_skid_pool = MultiMeshInstance3D.new()
+	_skid_pool.name = "SkidMarksPool"
+	_skid_pool.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_skid_pool.multimesh = mm
+	host.add_child(_skid_pool)
+	return _skid_pool
+
+func _update_tire_skid_marks(should_leave_marks: bool) -> void:
+	if not should_leave_marks:
+		_has_prev_skid_l = false
+		_has_prev_skid_r = false
+		return
+
+	var space_state := get_world_3d().direct_space_state if get_world_3d() != null else null
+	if space_state == null:
+		return
+
+	if wheel_rl != null:
+		var hit_l := _raycast_wheel_ground(space_state, wheel_rl)
+		if not hit_l.is_empty():
+			var pos_l: Vector3 = hit_l["position"]
+			var norm_l: Vector3 = hit_l["normal"]
+			if _has_prev_skid_l:
+				var seg_len_l := _prev_skid_pos_l.distance_to(pos_l)
+				if seg_len_l >= 0.35 and seg_len_l <= 4.0:
+					_stamp_skid_segment(_prev_skid_pos_l, pos_l, norm_l)
+					_prev_skid_pos_l = pos_l
+			else:
+				_prev_skid_pos_l = pos_l
+				_has_prev_skid_l = true
+		else:
+			_has_prev_skid_l = false
+
+	if wheel_rr != null:
+		var hit_r := _raycast_wheel_ground(space_state, wheel_rr)
+		if not hit_r.is_empty():
+			var pos_r: Vector3 = hit_r["position"]
+			var norm_r: Vector3 = hit_r["normal"]
+			if _has_prev_skid_r:
+				var seg_len_r := _prev_skid_pos_r.distance_to(pos_r)
+				if seg_len_r >= 0.35 and seg_len_r <= 4.0:
+					_stamp_skid_segment(_prev_skid_pos_r, pos_r, norm_r)
+					_prev_skid_pos_r = pos_r
+			else:
+				_prev_skid_pos_r = pos_r
+				_has_prev_skid_r = true
+		else:
+			_has_prev_skid_r = false
+
+func _raycast_wheel_ground(space_state: PhysicsDirectSpaceState3D, wheel: VehicleWheel3D) -> Dictionary:
+	var from: Vector3 = wheel.global_position + Vector3.UP * 0.25
+	var to: Vector3 = wheel.global_position - Vector3.UP * (wheel.wheel_radius + 0.55)
+	var query := PhysicsRayQueryParameters3D.create(from, to)
+	query.exclude = [get_rid()]
+	return space_state.intersect_ray(query)
+
+func _stamp_skid_segment(from_pos: Vector3, to_pos: Vector3, ground_normal: Vector3) -> void:
+	var pool := _ensure_skid_pool()
+	if pool == null or pool.multimesh == null:
+		return
+	var diff := to_pos - from_pos
+	var seg_len := diff.length()
+	if seg_len < 0.05:
+		return
+	var up := ground_normal.normalized()
+	var dir := diff.slide(up)
+	if dir.length_squared() < 0.0001:
+		return
+	dir = dir.normalized()
+	var right := up.cross(dir).normalized()
+	var mid := (from_pos + to_pos) * 0.5 + up * 0.028
+	var basis := Basis(right, up, dir * (seg_len * 1.15))
+
+	var mm := pool.multimesh
+	mm.set_instance_transform(_skid_write_idx, Transform3D(basis, mid))
+	_skid_write_idx = (_skid_write_idx + 1) % SKID_MAX_MARKS
+	_skid_active_count = mini(_skid_active_count + 1, SKID_MAX_MARKS)
+	mm.visible_instance_count = _skid_active_count
 
 func _create_smoke_particles(p_name: String) -> GPUParticles3D:
 	var particles := GPUParticles3D.new()
