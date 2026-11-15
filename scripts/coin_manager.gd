@@ -2,11 +2,11 @@ extends Node
 
 signal money_changed(new_amount: int)
 
-const SAVE_PATH: String = "user://player_wallet.save"
 const COIN_SCENE_PATH: String = "res://scenes/coin_pickup.tscn"
 const MAX_ACTIVE_SFX_PLAYERS: int = 8
 
 var player_money: int = 0
+var save_path: String = "user://player_wallet.save"
 var _coin_scene: PackedScene
 var _coin_sfx_stream: AudioStreamWAV
 
@@ -19,6 +19,7 @@ func add_money(amount: int) -> void:
 		return
 	player_money += amount
 	save_wallet()
+	print("MONEY COLLECTED! Current Balance: $%d" % player_money)
 	money_changed.emit(player_money)
 
 func spend_money(amount: int) -> bool:
@@ -30,14 +31,14 @@ func spend_money(amount: int) -> bool:
 	return true
 
 func save_wallet() -> void:
-	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	var file := FileAccess.open(save_path, FileAccess.WRITE)
 	if file != null:
 		file.store_64(player_money)
 		file.close()
 
 func load_wallet() -> void:
-	if FileAccess.file_exists(SAVE_PATH):
-		var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	if FileAccess.file_exists(save_path):
+		var file := FileAccess.open(save_path, FileAccess.READ)
 		if file != null:
 			player_money = int(file.get_64())
 			file.close()
