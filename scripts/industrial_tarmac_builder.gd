@@ -9,6 +9,7 @@ func _ready() -> void:
 	_build_industrial_compound()
 	_build_drift_layout_and_barriers()
 	_spawn_clipping_zones()
+	_spawn_coin_trail()
 	_spawn_distant_treelines()
 	_place_car_at_grid()
 
@@ -326,6 +327,33 @@ func _spawn_clipping_zones() -> void:
 		zone.position = a["pos"]
 		zone.set("zone_name", a["name"])
 		clip_node.add_child(zone)
+
+func _spawn_coin_trail() -> void:
+	var drift_curve := Curve3D.new()
+	drift_curve.bake_interval = 1.5
+	var racing_line_pts: Array[Vector3] = [
+		Vector3(0.0, 0.05, 44.0),
+		Vector3(6.0, 0.05, 18.0),
+		Vector3(46.0, 0.05, -14.0),   # Through INITIATION SWEEP
+		Vector3(58.0, 0.05, -38.0),   # Outside HAIRPIN 1 island
+		Vector3(50.0, 0.05, -58.0),
+		Vector3(24.0, 0.05, -58.0),
+		Vector3(0.0, 0.05, -50.0),    # Through CROSSOVER FLICK
+		Vector3(-24.0, 0.05, -56.0),
+		Vector3(-32.0, 0.05, -82.0),  # Outside HAIRPIN 2 island
+		Vector3(-50.0, 0.05, -90.0),
+		Vector3(-64.0, 0.05, -72.0),
+		Vector3(-52.0, 0.05, -48.0),
+		Vector3(-24.0, 0.05, 16.0),   # Through SOUTH SWEEPER
+		Vector3(-8.0, 0.05, 36.0),
+		Vector3(0.0, 0.05, 44.0)
+	]
+	for i in range(racing_line_pts.size()):
+		var prev_p: Vector3 = racing_line_pts[(i - 1 + racing_line_pts.size()) % racing_line_pts.size()]
+		var next_p: Vector3 = racing_line_pts[(i + 1) % racing_line_pts.size()]
+		var tangent: Vector3 = (next_p - prev_p) * 0.22
+		drift_curve.add_point(racing_line_pts[i], -tangent, tangent)
+	CoinManager.spawn_coins_along_curve(self, drift_curve, 14.0, 0.0, 0.0, 4.0)
 
 func _spawn_distant_treelines() -> void:
 	var tree_root := Node3D.new()

@@ -10,6 +10,7 @@ class_name DriftHUD
 @export var player_color: Color = Color.WHITE
 
 var player_badge_label: Label
+var cash_label: Label
 
 # Gameplay & Timer settings
 var time_left: float = 120.0
@@ -71,6 +72,35 @@ func _ready() -> void:
 		
 	if notification_banner != null:
 		notification_banner.modulate.a = 0.0
+
+	_setup_cash_display()
+	if not CoinManager.money_changed.is_connected(_on_money_changed):
+		CoinManager.money_changed.connect(_on_money_changed)
+
+func _exit_tree() -> void:
+	if CoinManager.money_changed.is_connected(_on_money_changed):
+		CoinManager.money_changed.disconnect(_on_money_changed)
+
+func _setup_cash_display() -> void:
+	if cash_label == null:
+		cash_label = Label.new()
+		cash_label.name = "CashLabel"
+		cash_label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+		cash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		cash_label.offset_left = -360.0
+		cash_label.offset_right = -35.0 if not is_split_screen else -16.0
+		cash_label.offset_top = 74.0 if not is_split_screen else 50.0
+		cash_label.offset_bottom = 112.0 if not is_split_screen else 84.0
+		cash_label.add_theme_font_size_override("font_size", 24 if not is_split_screen else 18)
+		cash_label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.14))
+		cash_label.add_theme_color_override("font_outline_color", Color.BLACK)
+		cash_label.add_theme_constant_override("outline_size", 10)
+		add_child(cash_label)
+	_on_money_changed(CoinManager.player_money)
+
+func _on_money_changed(new_amount: int) -> void:
+	if cash_label != null:
+		cash_label.text = "CASH: $%d" % new_amount
 
 func _process(delta: float) -> void:
 	if time_up_triggered:

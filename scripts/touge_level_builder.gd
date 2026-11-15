@@ -185,6 +185,7 @@ func _build_stacked_switchback_pass() -> void:
 	_spawn_streetlamps_and_foliage(curve, hw)
 	_spawn_realistic_forest_and_stumps(curve)
 	_spawn_clipping_zones()
+	CoinManager.spawn_coins_along_curve(self, curve, 26.0, 18.0, 0.05, 5.0)
 
 func _extrude_csg(n_name: String, poly: PackedVector2Array, col: Color, rough: float, collide: bool) -> void:
 	var csg := CSGPolygon3D.new()
@@ -685,11 +686,14 @@ func _spawn_clipping_zones() -> void:
 	var clip_node := Node3D.new()
 	clip_node.name = "ClippingZones"
 	add_child(clip_node)
+	var clip_coins: Array[Vector3] = []
 	for a in apexes:
 		var zone = clipping_zone_scene.instantiate()
 		zone.position = a["pos"]
 		zone.set("zone_name", a["name"])
 		clip_node.add_child(zone)
+		clip_coins.append(a["pos"])
+	CoinManager.spawn_coin_points(self, clip_coins, 0.0, 4.0)
 
 func _place_car_at_summit() -> void:
 	var chosen_car_path: String = ""

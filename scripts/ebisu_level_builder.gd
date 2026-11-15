@@ -332,6 +332,19 @@ func _build_ebisu_technical_circuit() -> void:
 	# 5. Track-border Tree Stumps and Companion Pines
 	_spawn_realistic_forest_and_stumps(curve)
 
+	# 6. Collectible coin trail along racing line and key drift corners
+	CoinManager.spawn_coins_along_curve(self, curve, 24.0, 18.0, 0.05, 5.0)
+	var corner_coins: Array[Vector3] = [
+		Vector3(140, 0.05, -35),
+		Vector3(130, 0.05, -100),
+		Vector3(80, 0.05, -130),
+		Vector3(-20, 0.05, -140),
+		Vector3(-150, 0.05, -120),
+		Vector3(-80, 0.05, -30),
+		Vector3(40, 0.05, -60)
+	]
+	CoinManager.spawn_coin_points(self, corner_coins, 0.0, 4.0)
+
 func _extrude_csg(n_name: String, poly: PackedVector2Array, col: Color, tex: Texture2D, collide: bool) -> void:
 	var csg := CSGPolygon3D.new()
 	csg.name = n_name
