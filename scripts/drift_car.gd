@@ -71,8 +71,6 @@ var handbrake: bool = false
 @onready var neon_underglow: OmniLight3D = get_node_or_null("NeonUnderglow")
 @onready var brake_light_omni: OmniLight3D = get_node_or_null("BrakeLight")
 @onready var taillight_mesh: MeshInstance3D = get_node_or_null("CarModel/TaillightRed")
-@onready var exhaust_flame: GPUParticles3D = get_node_or_null("ExhaustFlame")
-@onready var exhaust_flash: OmniLight3D = get_node_or_null("ExhaustFlash")
 
 var _taillight_mat: StandardMaterial3D
 var _prev_throttle_input: float = 0.0
@@ -80,10 +78,6 @@ var _slip_speed: float = 0.0
 var turbo_flutter_player: AudioStreamPlayer3D
 var _had_hard_throttle: bool = false
 var _turbo_flutter_cooldown: float = 0.0
-
-var exhaust_pop_player: AudioStreamPlayer3D
-var _backfire_cooldown: float = 0.0
-var _last_gear_band: int = 0
 
 const SKID_MAX_MARKS: int = 800
 var _skid_pool: MultiMeshInstance3D
@@ -118,7 +112,6 @@ func _ready() -> void:
 	_setup_tire_smoke()
 	_setup_car_horn()
 	_setup_turbo_flutter()
-	_setup_exhaust_pop_audio()
 	_setup_visual_lighting()
 	_setup_enhanced_car_visuals()
 	neon_underglow = get_node_or_null("NeonUnderglow")
@@ -355,23 +348,7 @@ func _physics_process(delta: float) -> void:
 
 	# Turbo flutter / compressor surge audio on hard throttle lift-off
 	_check_turbo_flutter(delta)
-
-	# Exhaust flame & pop/bang audio on sudden throttle cut, high-RPM upshift, or high-speed handbrake pull
-	if _backfire_cooldown > 0.0:
-		_backfire_cooldown = maxf(0.0, _backfire_cooldown - delta)
-	var cur_gear_band: int = int(current_speed_kmh / 20.0)
-	var upshifted_at_high_rpm: bool = cur_gear_band > _last_gear_band and throttle_input > 0.7 and current_speed_kmh >= 36.0
-	_last_gear_band = cur_gear_band
-	if _prev_throttle_input > 0.65 and throttle_input <= 0.08 and current_speed_kmh > 20.0:
-		_trigger_exhaust_backfire()
-	elif upshifted_at_high_rpm:
-		_trigger_exhaust_backfire()
-	elif handbrake and current_speed_kmh > 42.0 and _prev_throttle_input > 0.45:
-		_trigger_exhaust_backfire()
 	_prev_throttle_input = throttle_input
-
-	if exhaust_flash != null and exhaust_flash.light_energy > 0.01:
-		exhaust_flash.light_energy = lerpf(exhaust_flash.light_energy, 0.0, delta * 14.0)
 
 	# Ensure horizontal speed remains strictly capped at max_speed_kmh
 	var final_horiz: Vector3 = Vector3(linear_velocity.x, 0.0, linear_velocity.z)
@@ -645,68 +622,6 @@ func _setup_enhanced_car_visuals() -> void:
 	underglow.omni_range = 3.5
 	underglow.position = Vector3(0, -0.3, 0)
 	add_child(underglow)
-
-func _trigger_exhaust_backfire() -> void:
-	if _backfire_cooldown > 0.0:
-		return
-	_backfire_cooldown = 0.22
-	if exhaust_flame != null:
-		exhaust_flame.restart()
-		exhaust_flame.emitting = true
-	if exhaust_flash != null:
-		exhaust_flash.light_energy = 5.5
-	if exhaust_pop_player != null and exhaust_pop_player.stream != null:
-		exhaust_pop_player.pitch_scale = randf_range(0.88, 1.16)
-		exhaust_pop_player.play()
-	var cam = get_node_or_null("CameraPivot")
-	if cam != null and cam.has_method("trigger_shake"):
-		cam.trigger_shake(0.18)
-
-func _setup_exhaust_pop_audio() -> void:
-	var pop_paths: Array[String] = [
-		"res://assets/audio/exhaust_pop.wav",
-		"res://assets/audio/exhaust_pop.mp3"
-	]
-	var stream: AudioStream = null
-	for path in pop_paths:
-		if ResourceLoader.exists(path):
-			stream = load(path) as AudioStream
-			break
-
-	exhaust_pop_player = AudioStreamPlayer3D.new()
-	exhaust_pop_player.name = "ExhaustPopPlayer"
-	exhaust_pop_player.position = Vector3(-0.54, 0.32, 2.05) # Mounted at rear exhaust tip
-	exhaust_pop_player.unit_size = 20.0
-	exhaust_pop_player.max_distance = 100.0
-	exhaust_pop_player.volume_db = 1.5
-	add_child(exhaust_pop_player)
-	exhaust_pop_player.stream = stream if stream != null else _create_synthesized_exhaust_pop_sound()
-
-func _create_synthesized_exhaust_pop_sound() -> AudioStreamWAV:
-	var sample_rate: int = 22050
-	var duration: float = 0.28
-	var num_samples: int = int(sample_rate * duration)
-	var byte_array := PackedByteArray()
-	byte_array.resize(num_samples * 2)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 9091
-
-	# Sharp transient crack + deep exhaust thump (double pop-bang feel)
-	for i in range(num_samples):
-		var t: float = float(i) / float(sample_rate)
-		var main_crack: float = exp(-t * 34.0) * (rng.randf_range(-1.0, 1.0) * 0.75 + sin(t * 115.0 * TAU) * 0.45)
-		var echo_t: float = maxf(0.0, t - 0.085)
-		var echo_pop: float = (exp(-echo_t * 42.0) * (rng.randf_range(-1.0, 1.0) * 0.55 + sin(echo_t * 130.0 * TAU) * 0.3)) if t >= 0.085 else 0.0
-		var s: float = (main_crack + echo_pop * 0.65) * 0.95
-		var sample_val: int = int(clampf(s, -1.0, 1.0) * 32767.0)
-		byte_array.encode_s16(i * 2, sample_val)
-
-	var wav := AudioStreamWAV.new()
-	wav.format = AudioStreamWAV.FORMAT_16_BITS
-	wav.mix_rate = sample_rate
-	wav.stereo = false
-	wav.data = byte_array
-	return wav
 
 func _ensure_skid_pool() -> MultiMeshInstance3D:
 	if _skid_pool != null and is_instance_valid(_skid_pool):
